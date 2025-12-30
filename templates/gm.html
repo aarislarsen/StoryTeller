@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StoryTeller - Game Master</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gm.css') }}">
+</head>
+<body>
+    <!-- Master Controls -->
+    <div class="master-controls">
+        <button class="master-btn" onclick="resetAll()" title="Reset to Start">↺</button>
+        <button class="master-btn" onclick="openHelpModal()" title="Help & Tips">?</button>
+        <button class="master-btn" onclick="toggleTheme()" title="Toggle Light/Dark Mode" id="themeBtn">☀️</button>
+    </div>
+    
+    <!-- Control Bar -->
+    <div class="controls-bar">
+        <h1>🎲 StoryTeller — Game Master
+            <span class="connection-status" id="connectionStatus">
+                <span class="dot"></span>
+                <span>Connecting...</span>
+            </span>
+        </h1>
+        
+        <div class="controls-grid">
+            <div class="control-group">
+                <label>Storyline:</label>
+                <select id="storylineSelect" onchange="previewStoryline(this.value)">
+                    <option value="">-- Select --</option>
+                </select>
+                <button class="btn btn-sm btn-activate" id="activateBtn" onclick="activateStoryline()" disabled>Activate</button>
+                <button class="btn btn-sm" onclick="openStorylineModal()">+ New</button>
+                <button class="btn btn-sm" onclick="openImportModal()" title="Import Storyline">📥 Import</button>
+                <button class="btn btn-sm btn-secondary" onclick="editStoryline()">✎</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteStoryline()">✕</button>
+                <button class="btn btn-sm btn-secondary" onclick="openPlayerTypesModal()" title="Manage Player Types">👥 Types</button>
+                <button class="btn btn-sm btn-secondary" onclick="openPlayerLinksModal()" title="Get Player Links">🔗 Links</button>
+            </div>
+            
+            <div class="control-group">
+                <div class="playback-status" id="playbackStatus"></div>
+            </div>
+        </div>
+        
+        <div class="progress-section">
+            <!-- Play/Pause Button -->
+            <button class="play-btn" id="playBtn" onclick="togglePlayback()" title="Auto-play storyline">
+                <span class="play-icon">▶</span>
+            </button>
+            
+            <div class="progress-display">
+                <span class="progress-number" id="currentBlock">0</span>
+                <div>
+                    <div class="progress-label">of <span id="totalBlocks">0</span></div>
+                </div>
+            </div>
+            
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="previousBlock()">◀ Prev</button>
+                <button class="btn" onclick="nextBlock()">Next ▶</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-layout">
+        <!-- Top row: Storyline + GM Notes -->
+        <div class="storyline-row">
+            <div class="content" id="mainContent">
+                <div class="empty-state">
+                    <div class="icon">📖</div>
+                    <h3>No storyline selected</h3>
+                    <p>Create or select a storyline</p>
+                    <button class="btn" onclick="openStorylineModal()">+ Create Storyline</button>
+                </div>
+            </div>
+            
+            <div class="gm-notes-panel" id="gmNotesPanel" style="display: none;">
+                <div class="gm-notes-header">
+                    <span class="gm-notes-title">📝 GM Notes</span>
+                </div>
+                <div class="gm-notes-content" id="gmNotesContent"></div>
+            </div>
+        </div>
+        
+        <!-- Bottom row: Inject Library (full width, collapsible) -->
+        <div class="library-panel" id="libraryPanel">
+            <div class="library-header" onclick="toggleLibrary()">
+                <span class="library-toggle" id="libraryToggle">▼</span>
+                <span class="library-title">📚 Inject Library</span>
+                <span class="library-count" id="libraryCount"></span>
+                <button class="btn btn-sm" onclick="event.stopPropagation(); openLibraryInjectModal()">+ Add to Library</button>
+            </div>
+            <div class="library-content" id="libraryContent">
+                <div class="library-empty">No injects in library. Save injects here to reuse them across storylines.</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Inject Modal -->
+    <div class="modal-overlay" id="blockModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="blockModalTitle">Add Inject</span>
+                <button class="modal-close" onclick="closeBlockModal()">×</button>
+            </div>
+            <form id="blockForm">
+                <div class="modal-body">
+                    <input type="hidden" id="blockId">
+                    <div class="form-group">
+                        <label class="form-label">Heading *</label>
+                        <input type="text" class="form-input" id="blockHeading" required onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('blockForm').requestSubmit();}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Text</label>
+                        <textarea class="form-input" id="blockText"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Game Master's Notes</label>
+                        <textarea class="form-input" id="blockGmNotes" placeholder="Private notes visible only in GM view"></textarea>
+                        <div class="form-hint">These notes are only visible to you, not to players.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Target Player Types</label>
+                        <div class="player-types-checkboxes" id="blockPlayerTypes">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                        <div class="form-hint">Leave all unchecked to show to all players. Select specific types to limit visibility.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-input" id="blockDuration" min="0" value="0" placeholder="0 = manual advance only">
+                        <div class="form-hint">Time before auto-advancing to next inject during playback. Leave at 0 for manual control.</div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label class="form-label">Day</label>
+                            <input type="number" class="form-input" id="blockDay" min="0" value="0" placeholder="0 = not shown">
+                            <div class="form-hint">0 = hidden, 1+ = "Day X"</div>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label class="form-label">Time</label>
+                            <input type="text" class="form-input" id="blockTime" value="" placeholder="HH:MM" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$">
+                            <div class="form-hint">Leave empty to hide</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Image</label>
+                        <input type="file" class="form-input" id="blockImage" accept="image/*" onchange="previewImage(this)">
+                        <input type="hidden" id="existingImage">
+                        <img id="imagePreview" class="image-preview" style="display:none">
+                    </div>
+                    <div class="form-group save-to-library-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="saveToLibrary">
+                            <span>📚 Also save to Library</span>
+                        </label>
+                        <div class="form-hint">Save a copy of this inject to your library for reuse in other storylines.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeBlockModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Inject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Storyline Modal -->
+    <div class="modal-overlay" id="storylineModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="storylineModalTitle">New Storyline</span>
+                <button class="modal-close" onclick="closeStorylineModal()">×</button>
+            </div>
+            <form id="storylineForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input type="text" class="form-input" id="storylineName" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeStorylineModal()">Cancel</button>
+                    <button type="submit" class="btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Branch Modal -->
+    <div class="modal-overlay" id="branchModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="branchModalTitle">Create Branch</span>
+                <button class="modal-close" onclick="closeBranchModal()">×</button>
+            </div>
+            <form id="branchForm">
+                <div class="modal-body">
+                    <input type="hidden" id="branchId">
+                    <input type="hidden" id="branchParentInjectId">
+                    <div class="form-group">
+                        <label class="form-label">Branch Name *</label>
+                        <input type="text" class="form-input" id="branchName" required placeholder="e.g., Side Quest: The Lost Artifact" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('branchForm').requestSubmit();}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="branchAutoTrigger">
+                            Auto-trigger when parent inject is reached
+                        </label>
+                        <div class="form-hint">If unchecked, you must manually activate this branch.</div>
+                        <div class="form-hint form-hint-warning" id="branchAutoTriggerHint" style="display: none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Merge back to main storyline at:</label>
+                        <select class="form-input" id="branchMergeTarget">
+                            <option value="">-- Continue after branch (no skip) --</option>
+                        </select>
+                        <div class="form-hint">If set, main storyline injects will be skipped while branch plays, resuming at the selected inject.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-library" id="saveBranchToLibraryBtn" onclick="saveBranchToLibrary()" style="display: none;">📚 Save to Library</button>
+                    <div style="flex: 1;"></div>
+                    <button type="button" class="btn btn-secondary" onclick="closeBranchModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Branch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Branch Inject Modal -->
+    <div class="modal-overlay" id="branchInjectModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="branchInjectModalTitle">Add Branch Inject</span>
+                <button class="modal-close" onclick="closeBranchInjectModal()">×</button>
+            </div>
+            <form id="branchInjectForm">
+                <div class="modal-body">
+                    <input type="hidden" id="branchInjectId">
+                    <input type="hidden" id="branchInjectBranchId">
+                    <div class="form-group">
+                        <label class="form-label">Heading *</label>
+                        <input type="text" class="form-input" id="branchInjectHeading" required onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('branchInjectForm').requestSubmit();}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Text</label>
+                        <textarea class="form-input" id="branchInjectText"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Game Master's Notes</label>
+                        <textarea class="form-input" id="branchInjectGmNotes" placeholder="Private notes visible only in GM view"></textarea>
+                        <div class="form-hint">These notes are only visible to you, not to players.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Target Player Types</label>
+                        <div class="player-types-checkboxes" id="branchInjectPlayerTypes">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                        <div class="form-hint">Leave all unchecked to show to all players.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-input" id="branchInjectDuration" min="0" value="0">
+                        <div class="form-hint">Time before auto-advancing. Leave at 0 for manual control.</div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label class="form-label">Day</label>
+                            <input type="number" class="form-input" id="branchInjectDay" min="0" value="0" placeholder="0 = not shown">
+                            <div class="form-hint">0 = hidden, 1+ = "Day X"</div>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label class="form-label">Time</label>
+                            <input type="text" class="form-input" id="branchInjectTime" value="" placeholder="HH:MM" pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$">
+                            <div class="form-hint">Leave empty to hide</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Image</label>
+                        <input type="file" class="form-input" id="branchInjectImage" accept="image/*" onchange="previewBranchImage(this)">
+                        <input type="hidden" id="branchInjectExistingImage">
+                        <img id="branchImagePreview" class="image-preview" style="display:none">
+                    </div>
+                    <div class="form-group save-to-library-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="branchInjectSaveToLibrary">
+                            <span>📚 Also save to Library</span>
+                        </label>
+                        <div class="form-hint">Save a copy of this inject to your library for reuse.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeBranchInjectModal()">Cancel</button>
+                    <button type="submit" class="btn">Save Inject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Player Types Modal -->
+    <div class="modal-overlay" id="playerTypesModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">👥 Player Types</h3>
+                <button class="modal-close" onclick="closePlayerTypesModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="form-hint" style="margin-bottom: 15px;">
+                    Define different player types for your game (e.g., Night Elves, Orcs, Dwarves, Left-handed Lizards with Crotch-Rot). These are shared across all storylines.
+                </p>
+                
+                <div class="player-types-add">
+                    <input type="text" class="form-input" id="newPlayerType" placeholder="Enter player type name..." 
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();addPlayerType();}">
+                    <button class="btn btn-sm" onclick="addPlayerType()">Add</button>
+                </div>
+                
+                <div class="player-types-list" id="playerTypesList">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closePlayerTypesModal()">Done</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Help & Tips</h3>
+                <button class="modal-close" onclick="closeHelpModal()">&times;</button>
+            </div>
+            <div class="modal-body help-content">
+                <h4>Getting Started</h4>
+                <ul>
+                    <li>Create a new storyline using the <strong>+ New</strong> button</li>
+                    <li>Add injects to your storyline using the <strong>+ Add Inject</strong> card</li>
+                    <li>Click <strong>Activate</strong> to make the storyline visible to players</li>
+                </ul>
+                
+                <h4>Navigation</h4>
+                <ul>
+                    <li><strong>Drag injects</strong> to reorder them in the storyline</li>
+                    <li><strong>Click an inject number</strong> to jump directly to it</li>
+                    <li>Use <strong>◀ Prev</strong> and <strong>Next ▶</strong> buttons to navigate</li>
+                </ul>
+                
+                <h4>Auto-Play</h4>
+                <ul>
+                    <li>Set a <strong>duration</strong> on each inject (in seconds)</li>
+                    <li>Press the <strong>▶ Play</strong> button to auto-advance through injects</li>
+                    <li>The countdown appears on the current inject</li>
+                </ul>
+                
+                <h4>Branches</h4>
+                <ul>
+                    <li>Click the <strong>⑂</strong> button on an inject to create a branch</li>
+                    <li><strong>Auto branches</strong> trigger automatically when their parent inject is reached</li>
+                    <li><strong>Manual branches</strong> require clicking <strong>▶ Start</strong> to activate</li>
+                    <li>Drag branch groups to move them to different parent injects</li>
+                </ul>
+                
+                <h4>Keyboard Shortcuts</h4>
+                <ul>
+                    <li><strong>A</strong> — Add new inject</li>
+                    <li><strong>T</strong> — Toggle light/dark theme</li>
+                    <li><strong>+ / -</strong> — Zoom in/out</li>
+                    <li><strong>0</strong> — Reset zoom to 100%</li>
+                </ul>
+                
+                <h4>Master Controls (Top Right)</h4>
+                <ul>
+                    <li><strong>☀️/🌙</strong> — Toggle light/dark mode</li>
+                    <li><strong>↺</strong> — Reset storyline to beginning</li>
+                    <li><strong>👁</strong> — Open player view in new tab</li>
+                </ul>
+                
+                <h4>Player Types & Links</h4>
+                <ul>
+                    <li>Click <strong>👥 Types</strong> to manage player types</li>
+                    <li>Create types like: Night Elves, Orcs, Dwarfs, Left-handed Lizards with Crotch-Rot</li>
+                    <li>Player types are shared across all storylines</li>
+                    <li>Click <strong>🔗 Links</strong> to get unique URLs for each player type</li>
+                    <li>Share type-specific links so players see their role on screen</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeHelpModal()">Got it!</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Player Types Modal -->
+    <div class="modal-overlay" id="playerTypesModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">👥 Player Types</h3>
+                <button class="modal-close" onclick="closePlayerTypesModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="form-hint" style="margin-bottom: 15px;">
+                    Define player types for your campaign (e.g., Night Elves, Orcs, Dwarfs). These are shared across all storylines.
+                </p>
+                <div class="player-type-input-row">
+                    <input type="text" class="form-input" id="newPlayerType" placeholder="Enter new player type..." 
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();addPlayerType();}">
+                    <button class="btn btn-sm" onclick="addPlayerType()">+ Add</button>
+                </div>
+                <div class="player-types-list" id="playerTypesList">
+                    <!-- Player types will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePlayerTypesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Player Links Modal -->
+    <div class="modal-overlay" id="playerLinksModal">
+        <div class="modal" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🔗 Player Links</h3>
+                <button class="modal-close" onclick="closePlayerLinksModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="form-hint" style="margin-bottom: 15px;">
+                    Share these unique links with your players. Each player type has its own link.
+                </p>
+                <div class="player-links-list" id="playerLinksList">
+                    <!-- Player links will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="regenerateAllLinks()" title="Generate new URLs for all links">🔄 Regenerate All Links</button>
+                <button type="button" class="btn btn-secondary" onclick="closePlayerLinksModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Library Inject Modal -->
+    <div class="modal-overlay" id="libraryInjectModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="libraryInjectModalTitle">Add to Library</span>
+                <button class="modal-close" onclick="closeLibraryInjectModal()">×</button>
+            </div>
+            <form id="libraryInjectForm">
+                <div class="modal-body">
+                    <input type="hidden" id="libraryInjectId">
+                    <div class="form-group">
+                        <label class="form-label">Heading *</label>
+                        <input type="text" class="form-input" id="libraryInjectHeading" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Text</label>
+                        <textarea class="form-input" id="libraryInjectText"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Game Master's Notes</label>
+                        <textarea class="form-input" id="libraryInjectGmNotes" placeholder="Private notes visible only in GM view"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Target Player Types</label>
+                        <div class="player-types-checkboxes" id="libraryInjectPlayerTypes">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                        <div class="form-hint">Leave all unchecked to show to all players.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-input" id="libraryInjectDuration" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Image</label>
+                        <input type="file" class="form-input" id="libraryInjectImage" accept="image/*" onchange="previewLibraryImage(this)">
+                        <input type="hidden" id="libraryExistingImage">
+                        <img id="libraryImagePreview" class="image-preview" style="display:none">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeLibraryInjectModal()">Cancel</button>
+                    <button type="submit" class="btn">Save to Library</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Library Branch Details Modal -->
+    <div class="modal-overlay" id="libraryBranchDetailsModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <span class="modal-title">⑂ <span id="libraryBranchDetailsName">Branch Details</span></span>
+                <button class="modal-close" onclick="closeLibraryBranchDetailsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="branch-details-info">
+                    <div class="branch-details-trigger" id="libraryBranchDetailsTrigger"></div>
+                </div>
+                <div class="branch-details-injects" id="libraryBranchDetailsInjects">
+                    <!-- Injects will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeLibraryBranchDetailsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Storyline Modal -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <span class="modal-title">📥 Import Storyline</span>
+                <button class="modal-close" onclick="closeImportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="form-hint" style="margin-bottom: 15px;">
+                    Import a storyline from a JSON file. This will add the storyline(s) to your existing collection without removing any current storylines.
+                </p>
+                
+                <div class="form-group">
+                    <label class="form-label">Select JSON File</label>
+                    <input type="file" class="form-input" id="importFile" accept=".json,application/json" onchange="previewImportFile(this)">
+                </div>
+                
+                <div class="import-preview" id="importPreview" style="display: none;">
+                    <div class="form-label">Preview:</div>
+                    <div class="import-preview-content" id="importPreviewContent"></div>
+                </div>
+                
+                <div class="import-error" id="importError" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                <button type="button" class="btn" id="importConfirmBtn" onclick="confirmImport()" disabled>Import</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alert Modal -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <span class="modal-title" id="alertModalTitle">Notice</span>
+                <button class="modal-close" onclick="closeAlertModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="alertModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeAlertModal()">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <span class="modal-title" id="confirmModalTitle">Confirm</span>
+                <button class="modal-close" onclick="closeConfirmModal(false)">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmModal(false)">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmModalBtn" onclick="closeConfirmModal(true)">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/gm.js') }}"></script>
+</body>
+</html>

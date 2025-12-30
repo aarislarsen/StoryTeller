@@ -1,0 +1,1025 @@
+{
+  "storylines": {
+    "ded720e3-9760-4e0d-be6c-7a71b38c8a2a": {
+      "name": "Sky-slottets Smil",
+      "blocks": [
+        {
+          "id": "a9f84b2e-7b41-4a3c-9a67-4f9f8c1d0b3a",
+          "heading": "En Ny Morgen",
+          "text": "Solen st\u00e5r op over Eventyrskoven. Fuglene synger, og duggen glitrer. I m\u00e6rker, at i dag bliver s\u00e6rlig.",
+          "gm_notes": "Introduce roles and let each child say one fun detail about their hero. Keep it gentle and exciting.",
+          "duration": 20,
+          "day": 1,
+          "time": "09:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "6f3b2d10-2c3f-4a8e-8c2f-3b4c7d1e2a90",
+          "heading": "Borgmesterens Brev",
+          "text": "En due lander med et brev. Der st\u00e5r: \"Sky-slottets Smil er v\u00e6k!\" Uden smilet bliver dagen gr\u00e5 og stille.",
+          "gm_notes": "Establish the quest. Ask: 'Why do you think the smile matters to everyone?'",
+          "duration": 0,
+          "day": 1,
+          "time": "09:10",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "0d5d0f7e-4d2b-4bb4-9e61-9b8a7a0d5d6f",
+          "heading": "Feen Fnug",
+          "text": "En lille fe med glimmerst\u00f8v siger: \"Jeg hedder Fnug!\" Hun peger mod skyerne. \"Find Smilestjernen og bring den hjem.\"",
+          "gm_notes": "Do a playful fairy voice. Ask kids what a 'Smilestjerne' might look like or sound like.",
+          "duration": 0,
+          "day": 1,
+          "time": "09:20",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "b0ff26c2-7f6f-4b14-9c0c-8e6f4d2c1a1a",
+          "heading": "Det Glitrende Kort",
+          "text": "Fnug ruller et magisk kort ud. Tegnene danser som sm\u00e5 lys. Kun \u00e9n kan l\u00e6se de glitrende ord.",
+          "gm_notes": "Target the Wizard. Ask the Wizard to 'read' the map and describe the three route symbols. Optional: Roll a D6; on 4+ the map reveals a helpful hint.",
+          "duration": 0,
+          "day": 1,
+          "time": "09:30",
+          "target_player_types": [
+            "Wizard"
+          ],
+          "image": null
+        },
+        {
+          "id": "2a4a9b3b-6e2d-4f1c-8b5e-9b6f1a2c3d4e",
+          "heading": "Ved Vejkrydset",
+          "text": "I n\u00e5r et vejkryds med tre skilte. Et har en sol, et har et blad, og et har en fisk. Hvilken vej v\u00e6lger I?",
+          "gm_notes": "Choice Point #1. Have players vote. If they can\u2019t decide, suggest Solstien for younger groups. Remind them all choices lead to a happy ending.",
+          "duration": 0,
+          "day": 1,
+          "time": "10:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "c1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+          "heading": "Kage-duftende Eng",
+          "text": "I kommer til en eng, der dufter af sm\u00e5kager. Blomsterne ligner cupcakes. Noget glimter i gr\u00e6sset.",
+          "gm_notes": "Atmosphere moment. Ask: 'What cupcake-flower do you see?' Roll a D6; on 4+ they find a shiny button/coin 'heldeting'.",
+          "duration": 30,
+          "day": 1,
+          "time": "11:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "7a8b9c0d-1e2f-4a3b-8c9d-1a2b3c4d5e6f",
+          "heading": "Den Fniserende Bro",
+          "text": "En lille bro fniser, n\u00e5r nogen g\u00e5r p\u00e5 den. Den siger: \"Kun de modige g\u00e5r f\u00f8rst!\" Br\u00e6ttet hopper lidt som en trampolin.",
+          "gm_notes": "Target the Knight. Ask the Knight to lead and say a brave phrase. No failure\u2014bridge is friendly.",
+          "duration": 0,
+          "day": 1,
+          "time": "11:30",
+          "target_player_types": [
+            "Knight"
+          ],
+          "image": null
+        },
+        {
+          "id": "3c4d5e6f-7081-4b92-9c0d-2e3f40516273",
+          "heading": "R\u00e6vens Sp\u00f8rgsm\u00e5l",
+          "text": "En talende r\u00e6v med en lille hat kommer frem. \"Jeg kan hj\u00e6lpe jer,\" siger den. \"Men vil I f\u00f8rst hj\u00e6lpe mig med min tabte klokke?\"",
+          "gm_notes": "Choice Point #2. Present two helpful options. Let kids vote. Emphasize kindness and teamwork.",
+          "duration": 0,
+          "day": 1,
+          "time": "12:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "9e0f1a2b-3c4d-4e5f-8a9b-0c1d2e3f4051",
+          "heading": "Frokost og Fnug",
+          "text": "I holder en lille pause i skyggen. Fnug laver glimmer, der smager som saftevand. I f\u00f8ler jer klar igen.",
+          "gm_notes": "Snack break prompt. Keep it short. Ask: 'What is your hero\u2019s favorite snack?'",
+          "duration": 20,
+          "day": 1,
+          "time": "12:30",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "4f516273-8495-4c6d-9e0f-1a2b3c4d5e6f",
+          "heading": "Sky-trappen",
+          "text": "I ser en trappe af bl\u00f8de skyer op mod Sky-slottet. Trinene siger \"puf\" under jeres f\u00f8dder. \u00d8verst glimter en d\u00f8r som perlemor.",
+          "gm_notes": "Build excitement. Ask kids to make a 'puf' sound together as they climb.",
+          "duration": 0,
+          "day": 1,
+          "time": "14:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "5b627384-9506-4d7e-8f9a-2b3c4d5e6f70",
+          "heading": "Sky-slottets Sal",
+          "text": "I g\u00e5r ind i en sal af skyer. En venlig Skyk\u00e6mpe sover og snorker sm\u00e5 regnbuer. Smilestjernen ligger bag hans store pude.",
+          "gm_notes": "Choice Point #3. Make it clear the giant is friendly and sleepy, not scary. Offer gentle solutions only.",
+          "duration": 0,
+          "day": 1,
+          "time": "14:20",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "6c738495-0617-4e8f-9a0b-3c4d5e6f7081",
+          "heading": "Smilestjernen",
+          "text": "I f\u00e5r fat i Smilestjernen. Den er varm som kakao og lyser bl\u00f8dt. Hele salen bliver lidt mere farverig.",
+          "gm_notes": "Celebrate. Ask: 'What color is the star today?' Target Wizard if they want to describe the magic.",
+          "duration": 0,
+          "day": 1,
+          "time": "14:45",
+          "target_player_types": [
+            "Wizard"
+          ],
+          "image": null
+        },
+        {
+          "id": "7d849506-1728-4f9a-8b0c-4d5e6f708192",
+          "heading": "Tak, Skyk\u00e6mpe",
+          "text": "Skyk\u00e6mpen v\u00e5gner langsomt og smiler. \"\u00c5h! I fandt mit smil igen,\" siger han. Han hj\u00e6lper jer ud p\u00e5 en regnbue-rutsjebane.",
+          "gm_notes": "Keep it humorous. Ask kids to act out a giant yawn and a gentle 'thank you'.",
+          "duration": 0,
+          "day": 1,
+          "time": "15:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "8e950617-2839-4a0b-9c1d-5e6f708192a3",
+          "heading": "Byfest ved Solnedgang",
+          "text": "I vender hjem med Smilestjernen. Himlen bliver bl\u00e5, og alle griner igen. Der er saftevand, kage og en medalje til hver af jer.",
+          "gm_notes": "Tie back to choices made. Ask each player what they are proud of. Great closing moment.",
+          "duration": 0,
+          "day": 1,
+          "time": "18:00",
+          "target_player_types": [],
+          "image": null
+        }
+      ],
+      "branches": [
+        {
+          "id": "9a0b1c2d-3e4f-4a5b-8c6d-7e8f90123456",
+          "name": "Solstien (hurtig og lys)",
+          "parent_inject_id": "2a4a9b3b-6e2d-4f1c-8b5e-9b6f1a2c3d4e",
+          "auto_trigger": false,
+          "merge_to_inject_id": "c1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "0f123456-789a-4bcd-8ef0-1234567890ab",
+              "heading": "Sol p\u00e5 N\u00e6sen",
+              "text": "I g\u00e5r ad Solstien, og alt f\u00f8les varmt og let. En sommerfugl lander p\u00e5 ridderens hjelm. Den peger med vingerne, som om den guider jer.",
+              "gm_notes": "Target the Knight. Ask for a brave-but-kind phrase. Keep it playful.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:10",
+              "target_player_types": [
+                "Knight"
+              ],
+              "image": null
+            },
+            {
+              "id": "1a234567-89ab-4cde-9f01-2345678901bc",
+              "heading": "Sangblomster",
+              "text": "Blomsterne synger, n\u00e5r I siger \"godmorgen\". De l\u00e6rer jer en lille rim-sang om venskab. I f\u00e5r et glitrende blad som held.",
+              "gm_notes": "Have everyone say 'godmorgen' together. The leaf can be a friendly 'bonus' later.",
+              "duration": 20,
+              "day": 1,
+              "time": "10:25",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "2b345678-9abc-4def-8012-3456789012cd",
+          "name": "Bladstien (skov og spor)",
+          "parent_inject_id": "2a4a9b3b-6e2d-4f1c-8b5e-9b6f1a2c3d4e",
+          "auto_trigger": false,
+          "merge_to_inject_id": "c1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "3c456789-abcd-4ef0-9123-4567890123de",
+              "heading": "Hvisketr\u00e6er",
+              "text": "I g\u00e5r ad Bladstien, og tr\u00e6erne hvisker s\u00f8de hemmeligheder. Sm\u00e5 glimmer-fnug p\u00e5 jorden danner et spor. Det f\u00f8les som en skattejagt.",
+              "gm_notes": "Target the Ranger. Ask how they notice tiny clues. Optional: Roll a D6; on 4+ they find a bonus charm.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:10",
+              "target_player_types": [
+                "Ranger"
+              ],
+              "image": null
+            },
+            {
+              "id": "4d567890-bcde-4f01-8234-5678901234ef",
+              "heading": "Egern-feen",
+              "text": "En egern-fe hopper ned og vinker. \"Tak fordi I g\u00e5r stille!\" siger den. Den giver jer en n\u00f8dde-fl\u00f8jte, der kan lave en glad lyd.",
+              "gm_notes": "Let kids try a quiet whistle sound with their mouths. This can help later with the sleepy giant.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:30",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "5e678901-cdef-4a12-9345-6789012345f0",
+              "heading": "Blad-regn",
+              "text": "Blade falder som konfetti. I griner og danser igennem dem. I f\u00f8ler jer lette og modige.",
+              "gm_notes": "Short energy boost. Ask kids to show a 'leaf-dance'. Then return to main story.",
+              "duration": 20,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "6f789012-def0-4b23-8456-789012345601",
+          "name": "Fiskestien (boblegenvej)",
+          "parent_inject_id": "2a4a9b3b-6e2d-4f1c-8b5e-9b6f1a2c3d4e",
+          "auto_trigger": false,
+          "merge_to_inject_id": "4f516273-8495-4c6d-9e0f-1a2b3c4d5e6f",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "70890123-ef01-4c34-9567-890123456012",
+              "heading": "Hoppefisk",
+              "text": "I f\u00f8lger Fiskestien langs en lille flod. Sm\u00e5 fisk hopper og siger \"plop-plop\" i bobler. En fisk viser jer en hemmelig genvej.",
+              "gm_notes": "This is a shortcut branch. Ask: 'Do you trust the helpful fish?' Emphasize it's friendly and funny.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:10",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "81901234-f012-4d45-8678-901234560123",
+              "heading": "Boble-portalen",
+              "text": "I tr\u00e6der ind i en stor boble, der f\u00f8les som gel\u00e9. Den siger \"boing\" og \"pling\". Pludselig st\u00e5r I ved Sky-trappen!",
+              "gm_notes": "Make a 'boing' sound. This merges ahead, skipping some travel beats.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:25",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "92012345-0123-4e56-9789-012345601234",
+          "name": "Find Klokken (hj\u00e6lp r\u00e6ven)",
+          "parent_inject_id": "3c4d5e6f-7081-4b92-9c0d-2e3f40516273",
+          "auto_trigger": false,
+          "merge_to_inject_id": null,
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "a3012345-1234-4f67-8890-123456012345",
+              "heading": "Spor i Gr\u00e6sset",
+              "text": "I leder efter klokken. Der er sm\u00e5 m\u00e6rker i gr\u00e6sset og et glimt ved en sten. Det ligner et spor, der vil lege gemmeleg.",
+              "gm_notes": "Target the Ranger. Ask how they follow the trail. Optional: Roll a D6; on 4+ they find it fast.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:10",
+              "target_player_types": [
+                "Ranger"
+              ],
+              "image": null
+            },
+            {
+              "id": "b4123456-2345-4a78-9901-234560123456",
+              "heading": "Klokken Finder Hjem",
+              "text": "I finder en lille klokke, der siger \"ding-ding\". R\u00e6ven jubler og bukker. \"Tak! Jeg viser jer den bedste vej,\" siger den.",
+              "gm_notes": "Reward kindness. The fox can mention a safe shortcut or an easier bridge crossing later.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:20",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "c5234560-3456-4b89-a012-345601234567",
+              "heading": "R\u00e6vens Smarte Sti",
+              "text": "R\u00e6ven f\u00f8rer jer p\u00e5 en sti, der svinger forbi de kedelige sten. I ser sjove sky-former p\u00e5 himlen. Turen f\u00f8les kortere og rarere.",
+              "gm_notes": "Ask kids to name a cloud shape they see (e.g., dragon-shaped cloud but friendly).",
+              "duration": 20,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "d6345601-4567-4c90-b123-456012345678",
+          "name": "G\u00e5 Videre Nu (s\u00e5 hj\u00e6lper vi senere)",
+          "parent_inject_id": "3c4d5e6f-7081-4b92-9c0d-2e3f40516273",
+          "auto_trigger": false,
+          "merge_to_inject_id": null,
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "e7456012-5678-4d01-8c34-560123456789",
+              "heading": "Et Venligt L\u00f8fte",
+              "text": "I siger: \"Vi hj\u00e6lper dig senere!\" R\u00e6ven nikker og smiler. \"S\u00e5 tag denne lille fjer som held,\" siger den.",
+              "gm_notes": "Emphasize keeping promises. The feather can be a 'magic reminder' later.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:10",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "f8560123-6789-4e12-9d45-601234567890",
+              "heading": "Hurtige Skridt",
+              "text": "I g\u00e5r videre med hurtige, stille skridt. Solen st\u00e5r h\u00f8jt, og I f\u00f8ler jer fokuserede. I ved, at I stadig kan v\u00e6re hj\u00e6lpsomme.",
+              "gm_notes": "Ask: 'How will you remember to come back and help?' Tie into friendship theme.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:20",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "01234567-89ab-4f23-8a56-712345678901",
+          "name": "Synge en Blid Sang",
+          "parent_inject_id": "5b627384-9506-4d7e-8f9a-2b3c4d5e6f70",
+          "auto_trigger": false,
+          "merge_to_inject_id": "6c738495-0617-4e8f-9a0b-3c4d5e6f7081",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "12345678-9abc-4a34-9b67-823456789012",
+              "heading": "Tryllesang",
+              "text": "Troldmanden nynner en blid melodi. Lyden er som varm te og bl\u00f8de skyer. Skyk\u00e6mpens snork bliver til sm\u00e5 fnis.",
+              "gm_notes": "Target the Wizard. Invite a simple hum. No pressure\u2014everyone can hum softly together.",
+              "duration": 20,
+              "day": 1,
+              "time": "14:25",
+              "target_player_types": [
+                "Wizard"
+              ],
+              "image": null
+            },
+            {
+              "id": "23456789-abcd-4b45-8c78-934567890123",
+              "heading": "Stille F\u00f8dder",
+              "text": "I g\u00e5r som katte med stille f\u00f8dder. Puden glider lidt v\u00e6k. Smilestjernen kan n\u00e6sten n\u00e5s.",
+              "gm_notes": "Ask each child to show a 'quiet step'. No failure; it\u2019s a gentle success moment.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "34567890-bcde-4c56-9d89-a45678901234",
+              "heading": "Et Lille Ding",
+              "text": "I tager Smilestjernen helt stille. Den siger \"ding\" som en lille klokke. Skyk\u00e6mpen vender sig bare og smiler i s\u00f8vne.",
+              "gm_notes": "Smooth win. Then merge back to the main 'Smilestjernen' block.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "45678901-cdef-4d67-8e90-b56789012345",
+          "name": "Kilde Med En Fjer",
+          "parent_inject_id": "5b627384-9506-4d7e-8f9a-2b3c4d5e6f70",
+          "auto_trigger": false,
+          "merge_to_inject_id": "6c738495-0617-4e8f-9a0b-3c4d5e6f7081",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "56789012-def0-4e78-9f01-c67890123456",
+              "heading": "Fjer-kild",
+              "text": "I finder en lille fjer ved d\u00f8ren. I kilder Skyk\u00e6mpens n\u00e6se meget forsigtigt. Han siger \"hatschi!\" og fniser.",
+              "gm_notes": "Keep it silly and kind. No gross stuff\u2014just a cartoon sneeze. Ask kids to do a tiny 'hatschi!' together.",
+              "duration": 0,
+              "day": 1,
+              "time": "14:25",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "67890123-ef01-4f89-8012-d78901234567",
+              "heading": "Puden Flytter Sig",
+              "text": "Skyk\u00e6mpen ruller lidt om p\u00e5 siden. Puden flytter sig, som om den hj\u00e6lper jer. Smilestjernen ligger nu frit fremme.",
+              "gm_notes": "Ask: 'Who will grab the star?' Let any role shine, but keep it gentle.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "78901234-f012-4a90-9123-e89012345678",
+          "name": "Finde Hans Krammebamse",
+          "parent_inject_id": "5b627384-9506-4d7e-8f9a-2b3c4d5e6f70",
+          "auto_trigger": false,
+          "merge_to_inject_id": "7d849506-1728-4f9a-8b0c-4d5e6f708192",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "89012345-0123-4b01-8234-f90123456789",
+              "heading": "Hvor Er Bamsen?",
+              "text": "I ser en k\u00e6mpe bamse i en sky-kurv. Kurven h\u00e6nger i en snor, som siger: \"Kun p\u00e6ne ord \u00e5bner mig!\"",
+              "gm_notes": "Ask each child to say one kind word. The rope loosens happily. Reinforce kindness theme.",
+              "duration": 0,
+              "day": 1,
+              "time": "14:25",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "90123456-1234-4c12-9345-0123456789ab",
+              "heading": "Ridderens Blide Styrke",
+              "text": "Bamsen er stor og bl\u00f8d. Ridderen l\u00f8fter den forsigtigt, som en pude. I andre hj\u00e6lper med at styre den, s\u00e5 den ikke v\u00e6lter.",
+              "gm_notes": "Target the Knight. Emphasize gentle strength and teamwork. No rolls needed.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [
+                "Knight"
+              ],
+              "image": null
+            },
+            {
+              "id": "a0123456-2345-4d23-8456-123456789abc",
+              "heading": "Bamse-kram",
+              "text": "I l\u00e6gger bamsen ved Skyk\u00e6mpens arm. Han krammer den i s\u00f8vne og siger: \"Tak...\" Smilestjernen glider frem af sig selv!",
+              "gm_notes": "This longer path merges ahead to 'Tak, Skyk\u00e6mpe' (skips the separate star block). Keep it heartwarming and funny.",
+              "duration": 20,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        }
+      ],
+      "current_block": 0,
+      "active_branches": []
+    },
+    "87646630-959b-4002-b104-7496e82a1eb1": {
+      "name": "The Sky Castle\u2019s Smile",
+      "blocks": [
+        {
+          "id": "1b6d2a5a-2e7b-4ad0-b9a8-0d5d65c0b6a1",
+          "heading": "A New Morning",
+          "text": "The sun rises over the Enchanted Forest. Birds sing, and the dew sparkles. You can tell today will be special.",
+          "gm_notes": "Introduce roles and let each child share one fun detail about their hero. Keep it gentle and exciting.",
+          "duration": 20,
+          "day": 1,
+          "time": "09:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "2c8a4c1e-8df0-4b6f-9b7b-2a7b9e8a4d10",
+          "heading": "The Mayor\u2019s Letter",
+          "text": "A dove lands with a letter. It says: \"The Sky Castle\u2019s Smile is missing!\" Without it, the day turns gray and quiet.",
+          "gm_notes": "Establish the quest. Ask: 'Why do you think the smile matters to everyone?'",
+          "duration": 0,
+          "day": 1,
+          "time": "09:10",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "3d7d2f94-7e18-4f8b-90c7-1d0b2a3c4e5f",
+          "heading": "Fizz the Fairy",
+          "text": "A tiny fairy with glitter-dust says, \"I\u2019m Fizz!\" She points toward the clouds. \"Find the Smile Star and bring it home.\"",
+          "gm_notes": "Use a playful fairy voice. Ask kids what the 'Smile Star' might look or sound like.",
+          "duration": 0,
+          "day": 1,
+          "time": "09:20",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "4a0f1c3b-6c9b-4b1f-8a5e-9c0d1e2f3a4b",
+          "heading": "The Shimmering Map",
+          "text": "Fizz rolls out a magical map. The letters wiggle like tiny lights. Only one of you can read the sparkly words.",
+          "gm_notes": "Target the Wizard. Ask the Wizard to 'read' the map and describe the three route symbols. Optional: Roll a D6; on 4+ the map reveals a helpful hint.",
+          "duration": 0,
+          "day": 1,
+          "time": "09:30",
+          "target_player_types": [
+            "Wizard"
+          ],
+          "image": null
+        },
+        {
+          "id": "5b2f8c1d-3a4b-4c5d-8e9f-0a1b2c3d4e5f",
+          "heading": "At the Crossroads",
+          "text": "You reach a crossroads with three signs. One shows a sun, one shows a leaf, and one shows a fish. Which way do you choose?",
+          "gm_notes": "Choice Point #1. Have players vote. If they can\u2019t decide, suggest the Sunny Path for younger groups. Remind them all choices lead to a happy ending.",
+          "duration": 0,
+          "day": 1,
+          "time": "10:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "6c3d4e5f-7081-4a92-9b0c-1d2e3f405162",
+          "heading": "Cookie-Scented Meadow",
+          "text": "You arrive at a meadow that smells like cookies. The flowers look like cupcakes. Something sparkles in the grass.",
+          "gm_notes": "Atmosphere moment. Ask: 'What cupcake-flower do you see?' Roll a D6; on 4+ they find a shiny button/coin 'good-luck thing'.",
+          "duration": 30,
+          "day": 1,
+          "time": "11:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "7d1e2f3a-4b5c-4d6e-8f90-1a2b3c4d5e6f",
+          "heading": "The Giggle Bridge",
+          "text": "A little bridge giggles when someone steps on it. It says, \"Only the brave go first!\" The boards bounce like a tiny trampoline.",
+          "gm_notes": "Target the Knight. Ask the Knight to lead and say a brave phrase. No failure\u2014bridge is friendly.",
+          "duration": 0,
+          "day": 1,
+          "time": "11:30",
+          "target_player_types": [
+            "Knight"
+          ],
+          "image": null
+        },
+        {
+          "id": "8e2f3a4b-5c6d-4e7f-9a0b-2c3d4e5f6071",
+          "heading": "The Fox\u2019s Question",
+          "text": "A talking fox in a tiny hat appears. \"I can help you,\" it says. \"But will you help me find my lost bell first?\"",
+          "gm_notes": "Choice Point #2. Present two helpful options. Let kids vote. Emphasize kindness and teamwork.",
+          "duration": 0,
+          "day": 1,
+          "time": "12:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "9f3a4b5c-6d7e-4f80-8a1b-3d4e5f607182",
+          "heading": "Lunch and Glitter",
+          "text": "You take a little break in the shade. Fizz makes sparkles that taste like juice. You feel ready again.",
+          "gm_notes": "Snack break prompt. Keep it short. Ask: 'What is your hero\u2019s favorite snack?'",
+          "duration": 20,
+          "day": 1,
+          "time": "12:30",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "a04b5c6d-7e80-4a91-9b2c-4e5f60718293",
+          "heading": "The Cloud Stairway",
+          "text": "You see a stairway made of soft clouds up to the Sky Castle. Each step goes \"poof\" under your feet. At the top, a pearly door shimmers.",
+          "gm_notes": "Build excitement. Ask kids to make a 'poof' sound together as they climb.",
+          "duration": 0,
+          "day": 1,
+          "time": "14:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "b15c6d7e-8091-4b02-8c3d-5f60718293a4",
+          "heading": "The Sky Hall",
+          "text": "You enter a hall made of clouds. A kind Sky Giant sleeps and snores tiny rainbows. The Smile Star rests behind its big pillow.",
+          "gm_notes": "Choice Point #3. Make it clear the giant is friendly and sleepy, not scary. Offer gentle solutions only.",
+          "duration": 0,
+          "day": 1,
+          "time": "14:20",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "c26d7e80-91a2-4c13-9d4e-60718293a4b5",
+          "heading": "The Smile Star",
+          "text": "You carefully get the Smile Star. It feels warm like cocoa and glows softly. The whole hall becomes a little more colorful.",
+          "gm_notes": "Celebrate. Ask: 'What color is the star today?' Target Wizard if they want to describe the magic.",
+          "duration": 0,
+          "day": 1,
+          "time": "14:45",
+          "target_player_types": [
+            "Wizard"
+          ],
+          "image": null
+        },
+        {
+          "id": "d37e8091-a2b3-4d24-8e5f-718293a4b5c6",
+          "heading": "Thank You, Sky Giant",
+          "text": "The Sky Giant wakes slowly and smiles. \"Oh! You found my smile again,\" it says. It helps you out on a rainbow slide.",
+          "gm_notes": "Keep it humorous. Ask kids to act out a giant yawn and a gentle 'thank you'.",
+          "duration": 0,
+          "day": 1,
+          "time": "15:00",
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "e48091a2-b3c4-4e35-9f60-8293a4b5c6d7",
+          "heading": "Sunset Celebration",
+          "text": "You return home with the Smile Star. The sky turns blue, and everyone laughs again. There is juice, cake, and a medal for each of you.",
+          "gm_notes": "Tie back to choices made. Ask each player what they are proud of. Great closing moment.",
+          "duration": 0,
+          "day": 1,
+          "time": "18:00",
+          "target_player_types": [],
+          "image": null
+        }
+      ],
+      "branches": [
+        {
+          "id": "f591a2b3-c4d5-4f46-8a71-93a4b5c6d7e8",
+          "name": "Sunny Path (bright and easy)",
+          "parent_inject_id": "5b2f8c1d-3a4b-4c5d-8e9f-0a1b2c3d4e5f",
+          "auto_trigger": false,
+          "merge_to_inject_id": "6c3d4e5f-7081-4a92-9b0c-1d2e3f405162",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "0a2b3c4d-5e6f-4a70-8b9c-0d1e2f3a4b5c",
+              "heading": "Sun on Your Nose",
+              "text": "You follow the Sunny Path, and everything feels warm and light. A butterfly lands on the Knight\u2019s helmet. It flutters like it is pointing the way.",
+              "gm_notes": "Target the Knight. Ask for a brave-but-kind phrase. Keep it playful.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:10",
+              "target_player_types": [
+                "Knight"
+              ],
+              "image": null
+            },
+            {
+              "id": "1b3c4d5e-6f70-4b81-9c0d-1e2f3a4b5c6d",
+              "heading": "Singing Flowers",
+              "text": "The flowers sing when you say \"good morning.\" They teach you a tiny rhyme about friendship. You receive a glittery leaf for good luck.",
+              "gm_notes": "Have everyone say 'good morning' together. The leaf can be a friendly bonus later.",
+              "duration": 20,
+              "day": 1,
+              "time": "10:25",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "2c4d5e6f-7081-4c92-8d0e-2f3a4b5c6d7e",
+          "name": "Leaf Path (woods and clues)",
+          "parent_inject_id": "5b2f8c1d-3a4b-4c5d-8e9f-0a1b2c3d4e5f",
+          "auto_trigger": false,
+          "merge_to_inject_id": "6c3d4e5f-7081-4a92-9b0c-1d2e3f405162",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "3d5e6f70-8192-4d03-9e1f-3a4b5c6d7e80",
+              "heading": "Whisper Trees",
+              "text": "You follow the Leaf Path, and the trees whisper sweet secrets. Tiny glitter-fluffs on the ground make a trail. It feels like a treasure hunt.",
+              "gm_notes": "Target the Ranger. Ask how they notice tiny clues. Optional: Roll a D6; on 4+ they find a bonus charm.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:10",
+              "target_player_types": [
+                "Ranger"
+              ],
+              "image": null
+            },
+            {
+              "id": "4e6f7081-92a3-4e14-8f20-4b5c6d7e8091",
+              "heading": "The Squirrel Sprite",
+              "text": "A squirrel sprite hops down and waves. \"Thank you for walking softly!\" it says. It gives you an acorn whistle that can make a happy sound.",
+              "gm_notes": "Let kids try a quiet whistle sound with their mouths. This can help later with the sleepy giant.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:30",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "5f708192-a3b4-4f25-9021-5c6d7e8091a2",
+              "heading": "Leaf Confetti",
+              "text": "Leaves fall like confetti. You laugh and dance through them. You feel light and brave.",
+              "gm_notes": "Short energy boost. Ask kids to show a 'leaf dance'. Then return to main story.",
+              "duration": 20,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "6a8192a3-b4c5-4a36-8132-6d7e8091a2b3",
+          "name": "Fish Path (bubble shortcut)",
+          "parent_inject_id": "5b2f8c1d-3a4b-4c5d-8e9f-0a1b2c3d4e5f",
+          "auto_trigger": false,
+          "merge_to_inject_id": "a04b5c6d-7e80-4a91-9b2c-4e5f60718293",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "7b92a3b4-c5d6-4b47-9233-7e8091a2b3c4",
+              "heading": "Bouncy Fish",
+              "text": "You follow the Fish Path beside a small river. Little fish jump and say \"plop-plop\" in bubbles. One fish shows you a secret shortcut.",
+              "gm_notes": "This is a shortcut branch. Ask: 'Do you trust the helpful fish?' Emphasize it is friendly and funny.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:10",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "8c0d1e2f-3a4b-4c58-8334-8091a2b3c4d5",
+              "heading": "The Bubble Portal",
+              "text": "You step into a big bubble that feels like jelly. It goes \"boing\" and \"pling.\" Suddenly, you are at the Cloud Stairway!",
+              "gm_notes": "Make a 'boing' sound. This merges ahead, skipping some travel beats.",
+              "duration": 0,
+              "day": 1,
+              "time": "10:25",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "9d1e2f3a-4b5c-4d69-8435-91a2b3c4d5e6",
+          "name": "Find the Bell (help the fox)",
+          "parent_inject_id": "8e2f3a4b-5c6d-4e7f-9a0b-2c3d4e5f6071",
+          "auto_trigger": false,
+          "merge_to_inject_id": null,
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "ae2f3a4b-5c6d-4e7f-9a0b-2c3d4e5f6072",
+              "heading": "Tracks in the Grass",
+              "text": "You search for the bell. There are tiny marks in the grass and a sparkle near a stone. The trail feels like it is playing hide-and-seek.",
+              "gm_notes": "Target the Ranger. Ask how they follow the trail. Optional: Roll a D6; on 4+ they find it quickly.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:10",
+              "target_player_types": [
+                "Ranger"
+              ],
+              "image": null
+            },
+            {
+              "id": "bf3a4b5c-6d7e-4f80-8a1b-3d4e5f607183",
+              "heading": "The Bell Comes Home",
+              "text": "You find a little bell that goes \"ding-ding.\" The fox cheers and bows. \"Thank you! I\u2019ll show you the best way,\" it says.",
+              "gm_notes": "Reward kindness. The fox can mention a safe shortcut or an easier crossing later.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:20",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "c04b5c6d-7e80-4a91-9b2c-4e5f60718294",
+              "heading": "The Fox\u2019s Clever Trail",
+              "text": "The fox leads you on a path that curves past the boring stones. You spot funny cloud shapes above. The trip feels shorter and nicer.",
+              "gm_notes": "Ask kids to name a cloud shape they see. Keep it whimsical.",
+              "duration": 20,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "d15c6d7e-8091-4b02-8c3d-5f60718293a5",
+          "name": "Go Now (we\u2019ll help later)",
+          "parent_inject_id": "8e2f3a4b-5c6d-4e7f-9a0b-2c3d4e5f6071",
+          "auto_trigger": false,
+          "merge_to_inject_id": null,
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "e26d7e80-91a2-4c13-9d4e-60718293a4b6",
+              "heading": "A Kind Promise",
+              "text": "You say, \"We will help you later!\" The fox nods and smiles. \"Then take this tiny feather for good luck,\" it says.",
+              "gm_notes": "Emphasize keeping promises. The feather can be a 'reminder token' later in the story.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:10",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "f37e8091-a2b3-4d24-8e5f-718293a4b5c7",
+              "heading": "Quick Steps",
+              "text": "You walk on with quick, quiet steps. The sun is high, and you feel focused. You still want to be helpful when you can.",
+              "gm_notes": "Ask: 'How will you remember to come back and help?' Tie into friendship theme.",
+              "duration": 0,
+              "day": 1,
+              "time": "12:20",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "0b1c2d3e-4f50-4a61-8b72-93a4b5c6d7e9",
+          "name": "Sing a Gentle Song",
+          "parent_inject_id": "b15c6d7e-8091-4b02-8c3d-5f60718293a4",
+          "auto_trigger": false,
+          "merge_to_inject_id": "c26d7e80-91a2-4c13-9d4e-60718293a4b5",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "1c2d3e4f-5061-4b72-9c83-a4b5c6d7e8f0",
+              "heading": "A Magic Hum",
+              "text": "The Wizard hums a gentle tune. The sound feels like warm tea and soft clouds. The Sky Giant\u2019s snore turns into tiny giggles.",
+              "gm_notes": "Target the Wizard. Invite a simple hum. Everyone can hum softly together\u2014no pressure.",
+              "duration": 20,
+              "day": 1,
+              "time": "14:25",
+              "target_player_types": [
+                "Wizard"
+              ],
+              "image": null
+            },
+            {
+              "id": "2d3e4f50-6172-4c83-8d94-b5c6d7e8f901",
+              "heading": "Quiet Feet",
+              "text": "You walk like cats with quiet feet. The pillow slides a little. The Smile Star is almost within reach.",
+              "gm_notes": "Ask each child to show a 'quiet step'. No failure; it\u2019s a gentle success moment.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "3e4f5061-7283-4d94-9e05-c6d7e8f90123",
+              "heading": "A Tiny Ding",
+              "text": "You carefully take the Smile Star. It goes \"ding\" like a little bell. The Sky Giant only rolls over and smiles in its sleep.",
+              "gm_notes": "Smooth win. Then merge back to the main 'The Smile Star' block.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "4f506172-8394-4e05-8f16-d7e8f9012345",
+          "name": "Tickle with a Feather",
+          "parent_inject_id": "b15c6d7e-8091-4b02-8c3d-5f60718293a4",
+          "auto_trigger": false,
+          "merge_to_inject_id": "c26d7e80-91a2-4c13-9d4e-60718293a4b5",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "50617283-9495-4f16-9027-e8f901234567",
+              "heading": "Feather Tickle",
+              "text": "You find a tiny feather near the door. You gently tickle the Sky Giant\u2019s nose. It goes \"achoo!\" and giggles.",
+              "gm_notes": "Keep it silly and kind. Ask kids to do a tiny 'achoo!' together.",
+              "duration": 0,
+              "day": 1,
+              "time": "14:25",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "61728394-a5b6-4a27-8138-f90123456789",
+              "heading": "Pillow Moves",
+              "text": "The Sky Giant turns to the side. The pillow moves as if it wants to help you. The Smile Star is now easy to reach.",
+              "gm_notes": "Ask: 'Who will grab the star?' Any role can shine here.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        },
+        {
+          "id": "728394a5-b6c7-4b38-9249-0123456789ab",
+          "name": "Find the Teddy Bear",
+          "parent_inject_id": "b15c6d7e-8091-4b02-8c3d-5f60718293a4",
+          "auto_trigger": false,
+          "merge_to_inject_id": "d37e8091-a2b3-4d24-8e5f-718293a4b5c6",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "8394a5b6-c7d8-4c49-835a-1234567890ab",
+              "heading": "Where Is the Bear?",
+              "text": "You spot a giant teddy bear in a cloud basket. The basket hangs on a rope that says, \"Only kind words open me!\"",
+              "gm_notes": "Ask each child to say one kind word. The rope loosens happily. Reinforce kindness theme.",
+              "duration": 0,
+              "day": 1,
+              "time": "14:25",
+              "target_player_types": [],
+              "image": null
+            },
+            {
+              "id": "94a5b6c7-d8e9-4d5a-945b-2345678901bc",
+              "heading": "The Knight\u2019s Gentle Strength",
+              "text": "The teddy bear is huge and fluffy. The Knight lifts it carefully like a pillow. The others help steer it so it does not tip over.",
+              "gm_notes": "Target the Knight. Emphasize gentle strength and teamwork. No rolls needed.",
+              "duration": 0,
+              "day": 0,
+              "time": "",
+              "target_player_types": [
+                "Knight"
+              ],
+              "image": null
+            },
+            {
+              "id": "a5b6c7d8-e9f0-4e6b-856c-3456789012cd",
+              "heading": "Teddy Hug",
+              "text": "You place the teddy bear by the Sky Giant\u2019s arm. It hugs the bear and whispers, \"Thanks...\" The Smile Star slides out all by itself!",
+              "gm_notes": "This longer path merges ahead to 'Thank You, Sky Giant' (skips the separate star block). Keep it heartwarming and funny.",
+              "duration": 20,
+              "day": 0,
+              "time": "",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        }
+      ],
+      "current_block": 0,
+      "active_branches": []
+    }
+  },
+  "active_storyline": "ded720e3-9760-4e0d-be6c-7a71b38c8a2a",
+  "current_block": 0,
+  "player_types": [
+    "Knight",
+    "Wizard",
+    "Ranger"
+  ],
+  "player_links": {
+    "Knight": "975bd6c134561277",
+    "Wizard": "db9369082321c30a",
+    "Ranger": "d697fe65b30a8a41"
+  },
+  "generic_player_link": "725cf276ab4f7558",
+  "inject_library": [
+    {
+      "id": "6c7d9e0c-b97c-4c0e-a3a3-d27865314e0d",
+      "heading": "En Ny Morgen",
+      "text": "Solen st\u00e5r op over Eventyrskoven. Fuglene synger, og duggen glitrer. I m\u00e6rker, at i dag bliver s\u00e6rlig.",
+      "gm_notes": "Introduce roles and let each child say one fun detail about their hero. Keep it gentle and exciting.",
+      "duration": 20,
+      "day": 1,
+      "time": "09:00",
+      "target_player_types": [],
+      "image": null
+    },
+    {
+      "id": "4eddb7be-1341-4ba0-a69d-fd717aa1dc6a",
+      "type": "branch",
+      "name": "Bladstien (skov og spor)",
+      "auto_trigger": false,
+      "injects": [
+        {
+          "id": "3800a7a6-f50e-48ca-9261-5cd5a4fd5617",
+          "heading": "Hvisketr\u00e6er",
+          "text": "I g\u00e5r ad Bladstien, og tr\u00e6erne hvisker s\u00f8de hemmeligheder. Sm\u00e5 glimmer-fnug p\u00e5 jorden danner et spor. Det f\u00f8les som en skattejagt.",
+          "gm_notes": "Target the Ranger. Ask how they notice tiny clues. Optional: Roll a D6; on 4+ they find a bonus charm.",
+          "duration": 0,
+          "target_player_types": [
+            "Ranger"
+          ],
+          "image": null
+        },
+        {
+          "id": "fa414ad5-f6e9-4010-9ce5-8c4831ae1713",
+          "heading": "Egern-feen",
+          "text": "En egern-fe hopper ned og vinker. \"Tak fordi I g\u00e5r stille!\" siger den. Den giver jer en n\u00f8dde-fl\u00f8jte, der kan lave en glad lyd.",
+          "gm_notes": "Let kids try a quiet whistle sound with their mouths. This can help later with the sleepy giant.",
+          "duration": 0,
+          "target_player_types": [],
+          "image": null
+        },
+        {
+          "id": "61ace301-371e-49d1-a5f3-0e25ffa78e4a",
+          "heading": "Blad-regn",
+          "text": "Blade falder som konfetti. I griner og danser igennem dem. I f\u00f8ler jer lette og modige.",
+          "gm_notes": "Short energy boost. Ask kids to show a 'leaf-dance'. Then return to main story.",
+          "duration": 20,
+          "target_player_types": [],
+          "image": null
+        }
+      ]
+    }
+  ]
+}

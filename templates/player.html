@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if player_type %}{{ player_type }} - {% endif %}Story View</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+</head>
+<body>
+    {% if invalid_link %}
+    <!-- Invalid Link Message -->
+    <div class="app">
+        <div class="main-view">
+            <div class="card">
+                <div class="waiting">
+                    <div class="waiting-icon">🔒</div>
+                    <div class="waiting-title">Invalid or Expired Link</div>
+                    <div class="waiting-text">Please ask your Game Master for a valid player link.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="app">
+        <!-- Player Type Badge -->
+        {% if player_type %}
+        <div class="player-type-badge" id="playerTypeBadge">{{ player_type }}</div>
+        {% endif %}
+        
+        <!-- Header -->
+        <div class="header">
+            <button class="header-btn" id="themeBtn" onclick="toggleTheme()">
+                <span id="themeIcon">☀️</span>
+                <span>Light</span>
+            </button>
+            <button class="header-btn" id="historyBtn" onclick="toggleHistory()">
+                <span>📜</span>
+                <span>History</span>
+            </button>
+        </div>
+        
+        <!-- Main View -->
+        <div class="main-view" id="mainView">
+            <div class="card" id="currentCard">
+                <div class="waiting">
+                    <div class="waiting-icon">🎲</div>
+                    <div class="waiting-title">Awaiting the Story...</div>
+                    <div class="waiting-text">The Game Master will reveal the tale shortly.</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        
+        <!-- Connection Status -->
+        <div class="connection-status" id="connectionStatus">
+            <span class="dot"></span>
+            <span>Connecting...</span>
+        </div>
+        
+        <!-- History Panel -->
+        <div class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <span class="history-title">Story History</span>
+                <button class="history-close" onclick="toggleHistory()">✕ Close</button>
+            </div>
+            <div class="history-content">
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">No story blocks yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Pass player type info to JavaScript
+        window.PLAYER_TYPE = {{ player_type | tojson | safe if player_type else 'null' }};
+        window.PLAYER_TYPE_ID = {{ player_type_id | tojson | safe if player_type_id else 'null' }};
+    </script>
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+    {% endif %}
+</body>
+</html>
