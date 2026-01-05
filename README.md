@@ -2,6 +2,11 @@
 
 A visual interactive storytelling tool for Game Masters running tabletop RPGs, educational sessions, or any scenario where you need to guide players through a narrative with visual injects.
 
+<img width="1824" height="945" alt="image" src="https://github.com/user-attachments/assets/080eadea-f41e-4166-b1b3-b60c12acf924" />
+
+<img width="956" height="609" alt="image" src="https://github.com/user-attachments/assets/15819f1b-c1b3-4335-b56d-7a4ab25673b6" />
+
+
 ## Features
 
 - **Visual Storyline Builder** - Create and organize story injects with headings, text, and images
