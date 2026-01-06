@@ -2,12 +2,40 @@
 
 import uuid
 import time
+import base64
 from pathlib import Path
 from functools import wraps
-from flask import render_template, request, jsonify, send_from_directory, session, redirect, url_for, current_app
+from flask import render_template, request, jsonify, session, redirect, url_for, current_app
 
-from config import UPLOAD_DIR
 from data import app_data, save_data
+
+
+def file_to_data_uri(file):
+    """Convert an uploaded file to a base64 data URI."""
+    if not file or not file.filename:
+        return None
+    
+    # Read file content
+    content = file.read()
+    
+    # Determine MIME type from filename
+    filename = file.filename.lower()
+    if filename.endswith('.png'):
+        mime_type = 'image/png'
+    elif filename.endswith('.gif'):
+        mime_type = 'image/gif'
+    elif filename.endswith('.webp'):
+        mime_type = 'image/webp'
+    elif filename.endswith('.svg'):
+        mime_type = 'image/svg+xml'
+    else:
+        # Default to JPEG for jpg, jpeg, and unknown
+        mime_type = 'image/jpeg'
+    
+    # Encode to base64
+    b64_content = base64.b64encode(content).decode('utf-8')
+    
+    return f"data:{mime_type};base64,{b64_content}"
 
 
 # Login attempt tracking for exponential backoff
@@ -174,10 +202,6 @@ def register_routes(app):
         
         return render_template('player.html', player_type=player_type_name, player_type_id=player_type_id, invalid_link=False)
 
-    @app.route('/uploads/<filename>')
-    def uploaded_file(filename):
-        return send_from_directory(UPLOAD_DIR, filename)
-
     # ============ API: Storylines ============
     
     @app.route('/api/storylines', methods=['GET', 'POST'])
@@ -310,12 +334,6 @@ def register_routes(app):
         
         elif request.method == 'DELETE':
             if storyline_id in app_data['storylines']:
-                # Clean up images
-                for block in app_data['storylines'][storyline_id].get('blocks', []):
-                    if block.get('image'):
-                        img_path = UPLOAD_DIR / block['image']
-                        if img_path.exists():
-                            img_path.unlink()
                 del app_data['storylines'][storyline_id]
                 if app_data['active_storyline'] == storyline_id:
                     app_data['active_storyline'] = None
@@ -373,10 +391,7 @@ def register_routes(app):
         if 'image' in request.files:
             file = request.files['image']
             if file.filename:
-                ext = Path(file.filename).suffix.lower()
-                filename = f"{block['id']}{ext}"
-                file.save(UPLOAD_DIR / filename)
-                block['image'] = filename
+                block['image'] = file_to_data_uri(file)
         
         app_data['storylines'][storyline_id]['blocks'].append(block)
         save_data(app_data)
@@ -430,32 +445,15 @@ def register_routes(app):
             if 'image' in request.files:
                 file = request.files['image']
                 if file.filename:
-                    # Remove old image
-                    if block['image']:
-                        old_path = UPLOAD_DIR / block['image']
-                        if old_path.exists():
-                            old_path.unlink()
-                    ext = Path(file.filename).suffix.lower()
-                    filename = f"{block['id']}{ext}"
-                    file.save(UPLOAD_DIR / filename)
-                    block['image'] = filename
+                    block['image'] = file_to_data_uri(file)
             elif not request.form.get('existing_image'):
                 # Remove image if cleared
-                if block['image']:
-                    old_path = UPLOAD_DIR / block['image']
-                    if old_path.exists():
-                        old_path.unlink()
-                    block['image'] = None
+                block['image'] = None
             
             save_data(app_data)
             return jsonify(block)
         
         elif request.method == 'DELETE':
-            block = blocks[block_idx]
-            if block.get('image'):
-                img_path = UPLOAD_DIR / block['image']
-                if img_path.exists():
-                    img_path.unlink()
             blocks.pop(block_idx)
             
             # Adjust current inject index if needed
@@ -580,14 +578,6 @@ def register_routes(app):
             return jsonify(branch)
         
         elif request.method == 'DELETE':
-            # Clean up images from branch injects
-            branch = branches[branch_idx]
-            for inject in branch.get('injects', []):
-                if inject.get('image'):
-                    img_path = UPLOAD_DIR / inject['image']
-                    if img_path.exists():
-                        img_path.unlink()
-            
             # Remove from active branches if present
             if branch_id in storyline.get('active_branches', []):
                 storyline['active_branches'].remove(branch_id)
@@ -690,10 +680,7 @@ def register_routes(app):
         if 'image' in request.files:
             file = request.files['image']
             if file.filename:
-                ext = Path(file.filename).suffix.lower()
-                filename = f"{inject['id']}{ext}"
-                file.save(UPLOAD_DIR / filename)
-                inject['image'] = filename
+                inject['image'] = file_to_data_uri(file)
         
         branch['injects'].append(inject)
         save_data(app_data)
@@ -752,30 +739,14 @@ def register_routes(app):
             if 'image' in request.files:
                 file = request.files['image']
                 if file.filename:
-                    if inject['image']:
-                        old_path = UPLOAD_DIR / inject['image']
-                        if old_path.exists():
-                            old_path.unlink()
-                    ext = Path(file.filename).suffix.lower()
-                    filename = f"{inject['id']}{ext}"
-                    file.save(UPLOAD_DIR / filename)
-                    inject['image'] = filename
+                    inject['image'] = file_to_data_uri(file)
             elif not request.form.get('existing_image'):
-                if inject['image']:
-                    old_path = UPLOAD_DIR / inject['image']
-                    if old_path.exists():
-                        old_path.unlink()
-                    inject['image'] = None
+                inject['image'] = None
             
             save_data(app_data)
             return jsonify(inject)
         
         elif request.method == 'DELETE':
-            inject = injects[inject_idx]
-            if inject.get('image'):
-                img_path = UPLOAD_DIR / inject['image']
-                if img_path.exists():
-                    img_path.unlink()
             injects.pop(inject_idx)
             
             if branch['current_inject'] >= len(injects):
@@ -958,22 +929,10 @@ def register_routes(app):
         if 'image' in request.files:
             file = request.files['image']
             if file.filename:
-                ext = Path(file.filename).suffix.lower()
-                filename = f"lib_{library_inject['id']}{ext}"
-                file.save(UPLOAD_DIR / filename)
-                library_inject['image'] = filename
+                library_inject['image'] = file_to_data_uri(file)
         elif request.form.get('copy_image_from'):
-            # Copy existing image from storyline inject
-            import shutil
-            source_image = request.form.get('copy_image_from')
-            source_path = (UPLOAD_DIR / source_image).resolve()
-            # Validate path is within UPLOAD_DIR to prevent path traversal
-            if str(source_path).startswith(str(UPLOAD_DIR.resolve())) and source_path.exists():
-                ext = Path(source_image).suffix.lower()
-                new_filename = f"lib_{library_inject['id']}{ext}"
-                new_path = UPLOAD_DIR / new_filename
-                shutil.copy2(source_path, new_path)
-                library_inject['image'] = new_filename
+            # Copy existing image data URI from storyline inject
+            library_inject['image'] = request.form.get('copy_image_from')
         
         app_data['inject_library'].append(library_inject)
         save_data(app_data)
@@ -1016,27 +975,12 @@ def register_routes(app):
             if 'image' in request.files:
                 file = request.files['image']
                 if file.filename:
-                    # Remove old image if exists
-                    if inject.get('image'):
-                        old_path = UPLOAD_DIR / inject['image']
-                        if old_path.exists():
-                            old_path.unlink()
-                    ext = Path(file.filename).suffix.lower()
-                    filename = f"lib_{inject['id']}{ext}"
-                    file.save(UPLOAD_DIR / filename)
-                    inject['image'] = filename
+                    inject['image'] = file_to_data_uri(file)
             
             save_data(app_data)
             return jsonify(inject)
         
         elif request.method == 'DELETE':
-            inject = app_data['inject_library'][inject_idx]
-            # Remove image file if exists
-            if inject.get('image'):
-                img_path = UPLOAD_DIR / inject['image']
-                if img_path.exists():
-                    img_path.unlink()
-            
             del app_data['inject_library'][inject_idx]
             save_data(app_data)
             return jsonify({'success': True})
@@ -1067,19 +1011,8 @@ def register_routes(app):
             'day': library_inject.get('day', 0),
             'time': library_inject.get('time', ''),
             'target_player_types': library_inject.get('target_player_types', []).copy(),
-            'image': None
+            'image': library_inject.get('image')  # Data URI can be copied directly
         }
-        
-        # Copy image if exists
-        if library_inject.get('image'):
-            old_path = UPLOAD_DIR / library_inject['image']
-            if old_path.exists():
-                ext = Path(library_inject['image']).suffix
-                new_filename = f"{new_inject['id']}{ext}"
-                new_path = UPLOAD_DIR / new_filename
-                import shutil
-                shutil.copy2(old_path, new_path)
-                new_inject['image'] = new_filename
         
         blocks = app_data['storylines'][storyline_id]['blocks']
         if position is not None and 0 <= position <= len(blocks):
@@ -1123,19 +1056,8 @@ def register_routes(app):
             'day': library_inject.get('day', 0),
             'time': library_inject.get('time', ''),
             'target_player_types': library_inject.get('target_player_types', []).copy(),
-            'image': None
+            'image': library_inject.get('image')  # Data URI can be copied directly
         }
-        
-        # Copy image if exists
-        if library_inject.get('image'):
-            old_path = UPLOAD_DIR / library_inject['image']
-            if old_path.exists():
-                ext = Path(library_inject['image']).suffix
-                new_filename = f"{new_inject['id']}{ext}"
-                new_path = UPLOAD_DIR / new_filename
-                import shutil
-                shutil.copy2(old_path, new_path)
-                new_inject['image'] = new_filename
         
         if 'injects' not in branch:
             branch['injects'] = []
@@ -1152,8 +1074,6 @@ def register_routes(app):
     @require_gm
     def save_branch_to_library(storyline_id, branch_id):
         """Save a branch with all its injects to the library as a group."""
-        import shutil
-        
         if storyline_id not in app_data['storylines']:
             return jsonify({'error': 'Storyline not found'}), 404
         
@@ -1176,19 +1096,8 @@ def register_routes(app):
                 'gm_notes': inject.get('gm_notes', ''),
                 'duration': inject.get('duration', 0),
                 'target_player_types': inject.get('target_player_types', []).copy(),
-                'image': None
+                'image': inject.get('image')  # Data URI can be copied directly
             }
-            
-            # Copy image if exists
-            if inject.get('image'):
-                old_path = UPLOAD_DIR / inject['image']
-                if old_path.exists():
-                    ext = Path(inject['image']).suffix
-                    new_filename = f"lib_{library_inject['id']}{ext}"
-                    new_path = UPLOAD_DIR / new_filename
-                    shutil.copy2(old_path, new_path)
-                    library_inject['image'] = new_filename
-            
             library_injects.append(library_inject)
         
         # Save as a branch group in the library
@@ -1208,8 +1117,6 @@ def register_routes(app):
     @require_gm
     def add_library_branch_to_storyline(library_id):
         """Add a copy of a library branch to a storyline."""
-        import shutil
-        
         data = request.get_json()
         storyline_id = data.get('storyline_id')
         parent_inject_id = data.get('parent_inject_id')
@@ -1238,19 +1145,8 @@ def register_routes(app):
                 'gm_notes': inject.get('gm_notes', ''),
                 'duration': inject.get('duration', 0),
                 'target_player_types': inject.get('target_player_types', []).copy(),
-                'image': None
+                'image': inject.get('image')  # Data URI can be copied directly
             }
-            
-            # Copy image if exists
-            if inject.get('image'):
-                old_path = UPLOAD_DIR / inject['image']
-                if old_path.exists():
-                    ext = Path(inject['image']).suffix
-                    new_filename = f"{new_inject['id']}{ext}"
-                    new_path = UPLOAD_DIR / new_filename
-                    shutil.copy2(old_path, new_path)
-                    new_inject['image'] = new_filename
-            
             new_injects.append(new_inject)
         
         # Create the new branch

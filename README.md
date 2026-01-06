@@ -1,11 +1,10 @@
 # StoryTeller
 
-A visual interactive storytelling tool for Game Masters running tabletop RPGs, educational sessions, or any scenario where you need to guide players through a narrative with visual injects.
+A visual interactive storytelling tool for Game Masters running tabletop RPGs, or any scenario where you need to guide players through a narrative with visual injects.
 
 <img width="1824" height="945" alt="image" src="https://github.com/user-attachments/assets/080eadea-f41e-4166-b1b3-b60c12acf924" />
 
 <img width="956" height="609" alt="image" src="https://github.com/user-attachments/assets/15819f1b-c1b3-4335-b56d-7a4ab25673b6" />
-
 
 ## Features
 
@@ -17,6 +16,7 @@ A visual interactive storytelling tool for Game Masters running tabletop RPGs, e
 - **Player Type Targeting** - Send specific injects to specific player types (e.g., only the Wizard sees magic-related content)
 - **Inject Library** - Save and reuse injects across storylines
 - **Import/Export** - Import storylines from JSON files
+- **Self-Contained Storage** - All data including images stored in a single JSON file for easy backup
 - **Dark/Light Themes** - Both GM and Player interfaces support theme switching
 - **GM Authentication** - Optional password protection for the GM interface
 - **Responsive Design** - Works on desktop and mobile devices
@@ -135,6 +135,11 @@ Target specific content to specific players.
 
 ### Import/Export
 
+#### Exporting Storylines
+1. Activate the storyline you want to export
+2. Click **"📤 Export"**
+3. A JSON file will be downloaded containing the storyline and player types
+
 #### Importing Storylines
 1. Click **"📥 Import"**
 2. Select a JSON file
@@ -218,8 +223,7 @@ storyteller/
 │       ├── gm.js       # GM client logic
 │       └── player.js   # Player client logic
 └── storyline_data/     # Runtime data (created automatically)
-    ├── storylines.json # All storyline data
-    └── uploads/        # Uploaded images
+    └── storylines.json # All storyline data (including images as base64)
 ```
 
 ## API Reference

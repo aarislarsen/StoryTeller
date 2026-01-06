@@ -485,7 +485,7 @@ function buildBranchHTML(branch, isActive) {
                 </div>
                 <div class="block-body">
                     <div class="block-title">${escapeHtml(inj.heading)}</div>
-                    ${inj.image ? `<img src="/uploads/${inj.image}" class="block-image">` : ''}
+                    ${inj.image ? `<img src="${inj.image}" class="block-image">` : ''}
                     ${inj.text ? `<div class="block-text">${escapeHtml(inj.text)}</div>` : ''}
                 </div>
             </div>
@@ -552,7 +552,7 @@ function buildBlockCard(block, index, isActive, hasBranch = false, isNowPlaying 
             </div>
             <div class="block-body">
                 <div class="block-title">${escapeHtml(block.heading)}</div>
-                ${block.image ? `<img src="/uploads/${block.image}" class="block-image">` : ''}
+                ${block.image ? `<img src="${block.image}" class="block-image">` : ''}
                 ${block.text ? `<div class="block-text">${escapeHtml(block.text)}</div>` : ''}
             </div>
         </div>
@@ -746,7 +746,7 @@ function openBlockModal(data = null) {
     
     const preview = document.getElementById('imagePreview');
     if (data?.image) {
-        preview.src = '/uploads/' + data.image;
+        preview.src = data.image;
         preview.style.display = 'block';
     } else {
         preview.style.display = 'none';
@@ -1215,7 +1215,7 @@ function openBranchInjectModal(branchId, injectData = null) {
     
     const preview = document.getElementById('branchImagePreview');
     if (injectData?.image) {
-        preview.src = '/uploads/' + injectData.image;
+        preview.src = injectData.image;
         preview.style.display = 'block';
     } else {
         preview.style.display = 'none';
@@ -1669,7 +1669,7 @@ function renderLibrary() {
                     </div>
                     <div class="block-body">
                         <div class="block-title">${escapeHtml(item.name || 'Unnamed Branch')}</div>
-                        ${firstInject?.image ? `<img src="/uploads/${firstInject.image}" class="block-image">` : ''}
+                        ${firstInject?.image ? `<img src="${firstInject.image}" class="block-image">` : ''}
                         <div class="block-text">${item.auto_trigger ? '🔄 Auto-trigger' : '👆 Manual trigger'}</div>
                     </div>
                 </div>
@@ -1692,7 +1692,7 @@ function renderLibrary() {
                     </div>
                     <div class="block-body">
                         <div class="block-title">${escapeHtml(item.heading || 'Untitled')}</div>
-                        ${item.image ? `<img src="/uploads/${item.image}" class="block-image">` : ''}
+                        ${item.image ? `<img src="${item.image}" class="block-image">` : ''}
                         ${item.text ? `<div class="block-text">${escapeHtml(item.text)}</div>` : ''}
                     </div>
                 </div>
@@ -1733,7 +1733,7 @@ function openLibraryInjectModal(injectId = null) {
             
             if (inject.image) {
                 document.getElementById('libraryExistingImage').value = inject.image;
-                document.getElementById('libraryImagePreview').src = '/uploads/' + inject.image;
+                document.getElementById('libraryImagePreview').src = inject.image;
                 document.getElementById('libraryImagePreview').style.display = 'block';
             }
         }
@@ -1824,7 +1824,7 @@ function showLibraryBranchDetails(branchId) {
                     <span class="branch-details-inject-title">${escapeHtml(inj.heading || 'Untitled')}</span>
                     ${inj.duration > 0 ? `<span class="block-duration">${inj.duration}s</span>` : ''}
                 </div>
-                ${inj.image ? `<img src="/uploads/${inj.image}" class="branch-details-inject-image">` : ''}
+                ${inj.image ? `<img src="${inj.image}" class="branch-details-inject-image">` : ''}
                 ${inj.text ? `<div class="branch-details-inject-text">${escapeHtml(inj.text)}</div>` : ''}
             </div>
         `).join('');
@@ -2154,6 +2154,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// ============ Export Storyline ============
+function exportStoryline() {
+    if (!activeStoryline) {
+        showAlert('No Active Storyline', 'Please activate a storyline first before exporting.');
+        return;
+    }
+    
+    const storylineData = storylinesData[activeStoryline];
+    if (!storylineData) {
+        showAlert('Error', 'Could not find storyline data.');
+        return;
+    }
+    
+    // Create export format matching import format
+    const exportData = {
+        storylines: {
+            [activeStoryline]: {
+                name: storylineData.name,
+                blocks: storylineData.blocks || [],
+                branches: storylineData.branches || []
+            }
+        },
+        player_types: playerTypes || []
+    };
+    
+    // Create and download the file
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // Clean filename from storyline name
+    const safeName = storylineData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    a.download = `storyline_${safeName}.json`;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
 // ============ Import Storyline ============
 let importData = null;

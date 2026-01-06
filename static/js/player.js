@@ -112,7 +112,7 @@ function renderCurrentCard(block, index, total) {
     card.innerHTML = `
         ${block.image ? `
             <div class="card-image-container">
-                <img src="/uploads/${block.image}" class="card-image">
+                <img src="${block.image}" class="card-image">
             </div>
         ` : ''}
         <div class="card-content">
@@ -175,7 +175,7 @@ function buildHistoryItem(entry, index, isCurrent) {
     return `
         <div class="history-item ${isCurrent ? 'current' : ''}" onclick="viewHistoryItem(${index})">
             <div class="history-item-content">
-                ${block.image ? `<img src="/uploads/${block.image}" class="history-item-image">` : ''}
+                ${block.image ? `<img src="${block.image}" class="history-item-image">` : ''}
                 <div class="history-item-text">
                     <div class="history-item-title">${escapeHtml(block.heading)}</div>
                     ${block.text ? `<div class="history-item-preview">${escapeHtml(block.text)}</div>` : ''}

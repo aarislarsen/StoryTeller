@@ -29,7 +29,7 @@ if missing:
 from flask import Flask
 from flask_socketio import SocketIO
 
-from config import DATA_DIR, UPLOAD_DIR
+from config import DATA_DIR
 from data import load_data, save_data, app_data
 from routes import register_routes
 from socket_handlers import register_socket_handlers
