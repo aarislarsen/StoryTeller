@@ -232,8 +232,17 @@ function previewStoryline(id) {
         return;
     }
     
+    const isNewStoryline = currentStoryline !== id;
     currentStoryline = id;
-    renderStoryline(id);
+    renderStoryline(id).then(() => {
+        if (isNewStoryline) {
+            // Zoom to fit when loading a new storyline
+            setTimeout(() => zoomToFit(), 50); // Small delay to ensure DOM is ready
+        } else {
+            // Just update scrollbar visibility for re-renders
+            updateScrollbarVisibility();
+        }
+    });
     updateActivateButton();
 }
 
@@ -410,6 +419,7 @@ function buildStorylineHTML(data, blocks, currentIdx) {
                         <span class="zoom-level" id="zoomLevel">${Math.round(zoomLevel * 100)}%</span>
                         <button class="btn btn-sm btn-secondary" onclick="zoomIn()" title="Zoom in (+)">+</button>
                         <button class="btn btn-sm btn-secondary" onclick="zoomReset()" title="Reset zoom (0)">⊙</button>
+                        <button class="btn btn-sm btn-secondary" onclick="zoomToFit()" title="Zoom to fit (F)">⊡</button>
                     </span>
                 </div>
                 <input type="text" class="group-name" value="${escapeHtml(data.name || 'Storyline')}" 
@@ -681,6 +691,36 @@ function zoomReset() {
     setZoom(1.0);
 }
 
+function zoomToFit() {
+    const wrapper = document.querySelector('.storyline-layout-wrapper');
+    const container = document.getElementById('blocksContainer');
+    
+    if (!wrapper || !container) return;
+    
+    // Temporarily reset zoom to measure actual content size
+    container.style.transform = 'scale(1)';
+    
+    // Get the actual content dimensions at 100% zoom
+    const contentHeight = container.scrollHeight;
+    const contentWidth = container.scrollWidth;
+    
+    // Get the available space in the wrapper
+    const availableHeight = wrapper.clientHeight - 20; // Account for padding
+    const availableWidth = wrapper.clientWidth - 20;
+    
+    // Calculate the zoom level needed to fit height (prioritize height fitting)
+    let newZoom = 1.0;
+    if (contentHeight > availableHeight) {
+        newZoom = availableHeight / contentHeight;
+    }
+    
+    // Clamp to valid zoom range
+    newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+    newZoom = Math.round(newZoom * 10) / 10; // Round to 1 decimal
+    
+    setZoom(newZoom);
+}
+
 function setZoom(level) {
     zoomLevel = Math.round(level * 10) / 10; // Round to 1 decimal
     localStorage.setItem('gmZoomLevel', zoomLevel);
@@ -694,6 +734,32 @@ function setZoom(level) {
     if (zoomDisplay) {
         zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
     }
+    
+    // Update scrollbar visibility after zoom change
+    updateScrollbarVisibility();
+}
+
+function updateScrollbarVisibility() {
+    const wrapper = document.querySelector('.storyline-layout-wrapper');
+    const container = document.getElementById('blocksContainer');
+    
+    if (!wrapper || !container) return;
+    
+    // Get the scaled content dimensions
+    const scaledHeight = container.scrollHeight * zoomLevel;
+    const scaledWidth = container.scrollWidth * zoomLevel;
+    
+    // Get the available space
+    const availableHeight = wrapper.clientHeight;
+    const availableWidth = wrapper.clientWidth;
+    
+    // Determine if scrollbars are needed
+    const needsVerticalScroll = scaledHeight > availableHeight;
+    const needsHorizontalScroll = scaledWidth > availableWidth;
+    
+    // Set overflow properties accordingly
+    wrapper.style.overflowY = needsVerticalScroll ? 'auto' : 'hidden';
+    wrapper.style.overflowX = needsHorizontalScroll ? 'auto' : 'hidden';
 }
 
 function highlightCurrentlyDisplayed(mainIdx, source, branchId, branchInjectIdx) {
@@ -1349,6 +1415,9 @@ document.addEventListener('keydown', (e) => {
     }
     if (e.key === '0') {
         zoomReset();
+    }
+    if (e.key === 'f' || e.key === 'F') {
+        zoomToFit();
     }
     
     // Storyline navigation (only when a storyline is active)
