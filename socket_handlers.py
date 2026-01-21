@@ -201,27 +201,32 @@ def broadcast_current_block():
         if should_show_inject_to_player_type(current_inject, player_type):
             # Show current inject and update last_shown
             inject_to_send = current_inject
+            previous_inject = last_shown_inject.get(room)
             last_shown_inject[room] = current_inject
-        else:
-            # Show their last inject (they don't see this one)
-            inject_to_send = last_shown_inject.get(room)
-        
-        # Sanitize before sending (remove GM notes, target info)
-        safe_inject = sanitize_block_for_player(inject_to_send)
-        
-        player_data = {
-            'block': safe_inject,
-            'all_blocks': [],  # Don't send all blocks to players
-            'current_index': main_idx,
-            'total_blocks': len(blocks),
-            'branches': [],  # Don't send branch structure to players
-            'active_branches': [],
-            'current_source': source_type,
-            'source_name': source_name,
-            'current_branch_id': current_branch_id,
-            'current_branch_inject_idx': current_branch_inject_idx
-        }
-        _socketio.emit('block_update', player_data, room=room)
+            
+            # Only emit if the inject actually changed for this player
+            # Compare by inject id to detect actual changes
+            previous_id = previous_inject.get('id') if previous_inject else None
+            current_id = inject_to_send.get('id') if inject_to_send else None
+            
+            if previous_id != current_id:
+                # Sanitize before sending (remove GM notes, target info)
+                safe_inject = sanitize_block_for_player(inject_to_send)
+                
+                player_data = {
+                    'block': safe_inject,
+                    'all_blocks': [],  # Don't send all blocks to players
+                    'current_index': main_idx,
+                    'total_blocks': len(blocks),
+                    'branches': [],  # Don't send branch structure to players
+                    'active_branches': [],
+                    'current_source': source_type,
+                    'source_name': source_name,
+                    'current_branch_id': current_branch_id,
+                    'current_branch_inject_idx': current_branch_inject_idx
+                }
+                _socketio.emit('block_update', player_data, room=room)
+        # If player shouldn't see this inject, don't emit anything - they keep their current view
 
 
 def broadcast_state_to_gm_only():

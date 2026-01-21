@@ -351,7 +351,7 @@
     
     <!-- Help Modal -->
     <div class="modal-overlay" id="helpModal">
-        <div class="modal" style="max-width: 600px;">
+        <div class="modal" style="max-width: 650px;">
             <div class="modal-header">
                 <h3 class="modal-title">Help & Tips</h3>
                 <button class="modal-close" onclick="closeHelpModal()">&times;</button>
@@ -369,6 +369,7 @@
                     <li><strong>Drag injects</strong> to reorder them in the storyline</li>
                     <li><strong>Click an inject number</strong> to jump directly to it</li>
                     <li>Use <strong>◀ Prev</strong> and <strong>Next ▶</strong> buttons to navigate</li>
+                    <li>Use <strong>Arrow keys</strong> or <strong>Page Up/Down</strong> to navigate</li>
                 </ul>
                 
                 <h4>Auto-Play</h4>
@@ -378,12 +379,43 @@
                     <li>The countdown appears on the current inject</li>
                 </ul>
                 
-                <h4>Branches</h4>
+                <h4>Branches (Side-quests)</h4>
                 <ul>
                     <li>Click the <strong>⑂</strong> button on an inject to create a branch</li>
                     <li><strong>Auto branches</strong> trigger automatically when their parent inject is reached</li>
                     <li><strong>Manual branches</strong> require clicking <strong>▶ Start</strong> to activate</li>
                     <li>Drag branch groups to move them to different parent injects</li>
+                </ul>
+                
+                <h4>Player Types & Targeting</h4>
+                <ul>
+                    <li>Click <strong>👥 Types</strong> to manage player types (e.g., Red Team, Blue Team)</li>
+                    <li>Player types are shared across all storylines</li>
+                    <li>Click <strong>🔗 Links</strong> to get unique URLs for each player type</li>
+                    <li>Set inject <strong>visibility</strong> to control which player types see each inject</li>
+                    <li>Players won't see injects not targeted at them (no refresh indicator)</li>
+                </ul>
+                
+                <h4>Session Notes</h4>
+                <ul>
+                    <li>Use <strong>Notes for Later</strong> panel to capture observations during play</li>
+                    <li>Press <strong>Enter</strong> to submit, <strong>Alt+Enter</strong> for line breaks</li>
+                    <li>Notes include timestamp and current inject reference</li>
+                    <li><strong>Export</strong> notes to a text file or <strong>Clear All</strong> to reset</li>
+                </ul>
+                
+                <h4>Inject Library</h4>
+                <ul>
+                    <li>Save injects or branches to the library for reuse</li>
+                    <li>Drag items from the library into your storyline</li>
+                    <li>Library items persist across sessions</li>
+                </ul>
+                
+                <h4>Import & Export</h4>
+                <ul>
+                    <li>Use <strong>Export</strong> to save the current storyline as JSON</li>
+                    <li>Use <strong>Import</strong> to load storylines, player types, and library items</li>
+                    <li>Great for backups or sharing between exercises</li>
                 </ul>
                 
                 <h4>Keyboard Shortcuts</h4>
@@ -392,22 +424,15 @@
                     <li><strong>T</strong> — Toggle light/dark theme</li>
                     <li><strong>+ / -</strong> — Zoom in/out</li>
                     <li><strong>0</strong> — Reset zoom to 100%</li>
+                    <li><strong>F</strong> — Zoom to fit all injects</li>
+                    <li><strong>← / →</strong> — Previous/Next inject</li>
                 </ul>
                 
                 <h4>Master Controls (Top Right)</h4>
                 <ul>
                     <li><strong>☀️/🌙</strong> — Toggle light/dark mode</li>
                     <li><strong>↺</strong> — Reset storyline to beginning</li>
-                    <li><strong>👁</strong> — Open player view in new tab</li>
-                </ul>
-                
-                <h4>Player Types & Links</h4>
-                <ul>
-                    <li>Click <strong>👥 Types</strong> to manage player types</li>
-                    <li>Create types like: Night Elves, Orcs, Dwarfs, Left-handed Lizards with Crotch-Rot</li>
-                    <li>Player types are shared across all storylines</li>
-                    <li>Click <strong>🔗 Links</strong> to get unique URLs for each player type</li>
-                    <li>Share type-specific links so players see their role on screen</li>
+                    <li><strong>?</strong> — This help dialog</li>
                 </ul>
             </div>
             <div class="modal-footer">

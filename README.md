@@ -14,9 +14,12 @@ A visual interactive storytelling tool for Game Masters running tabletop RPGs, o
 - **Day & Time Display** - Show story progression with optional day numbers and timestamps
 - **Auto/Manual Playback** - Set durations for automatic progression or advance manually
 - **Player Type Targeting** - Send specific injects to specific player types (e.g., only the Wizard sees magic-related content)
+- **Silent Targeting** - Players see no indication when injects not meant for them are played
+- **Session Notes** - Capture timestamped observations during play with inject references
 - **Inject Library** - Save and reuse injects across storylines
-- **Import/Export** - Import storylines from JSON files
-- **Self-Contained Storage** - All data including images stored in a single JSON file for easy backup
+- **Import/Export** - Import/export storylines, player types, and library items as JSON
+- **Zoom Controls** - Zoom in/out with auto-fit to show all injects
+- **Self-Contained Storage** - All data including images stored in JSON files for easy backup
 - **Dark/Light Themes** - Both GM and Player interfaces support theme switching
 - **GM Authentication** - Optional password protection for the GM interface
 - **Responsive Design** - Works on desktop and mobile devices
@@ -99,6 +102,7 @@ Target specific content to specific players.
 3. When creating injects, select which types should see it
 4. Players using type-specific links only see relevant content
 5. The "All Players" link sees everything
+6. **Silent targeting**: Players see no refresh or indication when an inject not meant for them is played
 
 ### Player Links
 
@@ -106,6 +110,20 @@ Target specific content to specific players.
 2. Click **"Generate Links"** to create URLs
 3. Share type-specific links with players, or use the "All Players" link
 4. **Regenerate** creates new URLs (old links stop working)
+
+### Session Notes
+
+The **Notes for Later** panel lets you capture observations during play.
+
+1. Type a note in the text area
+2. Press **Enter** to submit (or **Alt+Enter** for line breaks)
+3. Notes are saved with:
+   - **Timestamp** - When the note was created
+   - **Inject reference** - Which inject was active (e.g., "#4-2 Secret Cave" for branch inject 2 on main inject 4)
+4. **Export** notes to a text file for post-session review
+5. **Clear All** to reset notes for a new session
+
+Session notes are stored separately from storyline data and persist across browser refreshes.
 
 ### Running a Session
 
@@ -132,6 +150,16 @@ Target specific content to specific players.
 - **▶ Start**: Activate the branch (players won't see any change until you advance)
 - **⏹ Stop**: Deactivate the branch (players continue seeing current inject until you advance)
 - Activating/deactivating branches does NOT refresh the player view - only advancing does
+
+### Zoom Controls
+
+The storyline view supports zooming for better overview:
+
+- **+ / -** buttons or keyboard shortcuts to zoom in/out
+- **⊙** button or **0** key to reset to 100%
+- **⊡** button or **F** key to auto-fit all injects in view
+- When loading a new storyline, zoom automatically adjusts to fit all injects
+- Scrollbars appear only when content overflows the visible area
 
 ### Import/Export
 
@@ -185,7 +213,8 @@ See `prompt.txt` for a ChatGPT prompt that generates complete storylines in this
 | T | Toggle theme |
 | + / = | Zoom in |
 | - | Zoom out |
-| 0 | Reset zoom |
+| 0 | Reset zoom to 100% |
+| F | Zoom to fit all injects |
 
 ### Inject Library
 
@@ -223,7 +252,8 @@ storyteller/
 │       ├── gm.js       # GM client logic
 │       └── player.js   # Player client logic
 └── storyline_data/     # Runtime data (created automatically)
-    └── storylines.json # All storyline data (including images as base64)
+    ├── storylines.json # All storyline data (including images as base64)
+    └── session_notes.json # Session notes data
 ```
 
 ## API Reference
@@ -261,7 +291,7 @@ storyteller/
 |--------|----------|-------------|
 | GET | `/api/player-types` | List player types |
 | POST | `/api/player-types` | Add player type |
-| DELETE | `/api/player-types/<name>` | Remove player type |
+| DELETE | `/api/player-types/<n>` | Remove player type |
 | GET | `/api/player-links` | Get player links |
 | POST | `/api/player-links` | Generate/regenerate links |
 
@@ -272,6 +302,14 @@ storyteller/
 | POST | `/api/library` | Add to library |
 | POST | `/api/library/<id>/add-to-storyline` | Add library inject to storyline |
 | POST | `/api/library/<id>/add-to-branch` | Add library inject to branch |
+
+### Session Notes
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/session-notes` | Get all session notes |
+| POST | `/api/session-notes` | Add a session note |
+| DELETE | `/api/session-notes/<index>` | Delete a note by index |
+| POST | `/api/session-notes/clear` | Clear all session notes |
 
 ## WebSocket Events
 
@@ -318,6 +356,9 @@ Dependencies are auto-installed on first run.
 10. **Branch controls are invisible to players**: Starting/stopping branches won't alert players - only advancing does
 11. **Use Day/Time for pacing**: Show story progression with day numbers and timestamps at key moments
 12. **Generate with AI**: Use the included `prompt.txt` with ChatGPT to generate complete storylines
+13. **Take session notes**: Use the Notes for Later panel to capture observations for post-session review
+14. **Export notes after sessions**: Download your session notes before clearing for the next session
+15. **Use zoom to fit**: Press F to auto-zoom so all injects are visible at once
 
 ## License
 
