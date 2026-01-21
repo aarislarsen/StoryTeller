@@ -1166,3 +1166,83 @@ def register_routes(app):
         
         save_data(app_data)
         return jsonify(new_branch)
+
+    # ============ API: Session Notes ============
+    
+    def load_session_notes():
+        """Load session notes from file."""
+        from config import DATA_DIR
+        import json
+        notes_file = DATA_DIR / 'session_notes.json'
+        if notes_file.exists():
+            try:
+                with open(notes_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return {'notes': []}
+        return {'notes': []}
+    
+    def save_session_notes(data):
+        """Save session notes to file."""
+        from config import DATA_DIR
+        import json
+        notes_file = DATA_DIR / 'session_notes.json'
+        with open(notes_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    @app.route('/api/session-notes', methods=['GET'])
+    @require_gm
+    def get_session_notes():
+        """Get all session notes."""
+        data = load_session_notes()
+        return jsonify(data)
+    
+    @app.route('/api/session-notes', methods=['POST'])
+    @require_gm
+    def add_session_note():
+        """Add a new session note."""
+        from datetime import datetime
+        
+        req_data = request.get_json()
+        text = req_data.get('text', '').strip()
+        inject = req_data.get('inject', '')
+        
+        if not text:
+            return jsonify({'error': 'Note text is required'}), 400
+        
+        data = load_session_notes()
+        
+        # Create timestamp
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        note = {
+            'timestamp': timestamp,
+            'inject': inject,
+            'text': text
+        }
+        
+        # Add to beginning of list (newest first)
+        data['notes'].insert(0, note)
+        
+        save_session_notes(data)
+        return jsonify({'success': True, 'notes': data['notes']})
+    
+    @app.route('/api/session-notes/<int:index>', methods=['DELETE'])
+    @require_gm
+    def delete_session_note(index):
+        """Delete a session note by index."""
+        data = load_session_notes()
+        
+        if 0 <= index < len(data['notes']):
+            data['notes'].pop(index)
+            save_session_notes(data)
+            return jsonify({'success': True, 'notes': data['notes']})
+        
+        return jsonify({'error': 'Note not found'}), 404
+
+    @app.route('/api/session-notes/clear', methods=['POST'])
+    @require_gm
+    def clear_session_notes():
+        """Clear all session notes."""
+        save_session_notes({'notes': []})
+        return jsonify({'success': True})

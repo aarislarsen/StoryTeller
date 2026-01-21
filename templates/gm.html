@@ -66,7 +66,7 @@
     
     <!-- Main Content -->
     <div class="main-layout">
-        <!-- Top row: Storyline + GM Notes -->
+        <!-- Top row: Storyline + Side Panels -->
         <div class="storyline-row">
             <div class="content" id="mainContent">
                 <div class="empty-state">
@@ -77,11 +77,31 @@
                 </div>
             </div>
             
-            <div class="gm-notes-panel" id="gmNotesPanel">
-                <div class="gm-notes-header">
-                    <span class="gm-notes-title">📝 GM Notes</span>
+            <!-- Right side panels column -->
+            <div class="side-panels">
+                <div class="gm-notes-panel" id="gmNotesPanel">
+                    <div class="gm-notes-header">
+                        <span class="gm-notes-title">📝 GM Notes</span>
+                    </div>
+                    <div class="gm-notes-content" id="gmNotesContent"></div>
                 </div>
-                <div class="gm-notes-content" id="gmNotesContent"></div>
+                
+                <div class="session-notes-panel" id="sessionNotesPanel">
+                    <div class="session-notes-header">
+                        <span class="session-notes-title">📋 Notes for Later</span>
+                    </div>
+                    <div class="session-notes-content">
+                        <div class="session-notes-form">
+                            <textarea id="sessionNoteText" placeholder="Write a note... (Alt+Enter for line-breaks, Enter to submit)" rows="3" onkeydown="handleSessionNoteKeydown(event)"></textarea>
+                            <button class="btn btn-sm" onclick="addSessionNote()">Add Note</button>
+                        </div>
+                        <div class="session-notes-list" id="sessionNotesList"></div>
+                        <div class="session-notes-actions">
+                            <button class="btn btn-sm btn-secondary" onclick="exportSessionNotes()">📥 Export</button>
+                            <button class="btn btn-sm btn-danger" onclick="clearSessionNotes()">🗑 Clear All</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         

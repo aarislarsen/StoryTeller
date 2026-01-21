@@ -343,16 +343,25 @@ h1 {
     overflow: hidden;
 }
 
-/* GM Notes Panel */
-.gm-notes-panel {
+/* Side Panels Column */
+.side-panels {
     width: 300px;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-height: 0;
+}
+
+/* GM Notes Panel */
+.gm-notes-panel {
     background: #161b22;
     border: 1px solid #30363d;
     border-radius: 6px;
     display: flex;
     flex-direction: column;
-    max-height: 500px;
+    height: 500px;
+    flex-shrink: 0;
 }
 
 .gm-notes-header {
@@ -371,6 +380,142 @@ h1 {
 .gm-notes-content {
     padding: 16px;
     overflow-y: auto;
+    flex: 1;
+}
+
+/* Session Notes Panel */
+.session-notes-panel {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.session-notes-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #30363d;
+    background: #21262d;
+    border-radius: 6px 6px 0 0;
+}
+
+.session-notes-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #a371f7;
+}
+
+.session-notes-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.session-notes-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.session-notes-form textarea {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    padding: 10px;
+    font-size: 13px;
+    resize: none;
+    font-family: inherit;
+}
+
+.session-notes-form textarea:focus {
+    outline: none;
+    border-color: #a371f7;
+}
+
+.session-notes-form .btn {
+    align-self: flex-end;
+}
+
+.session-notes-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+
+.session-note-item {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 13px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.session-note-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #8b949e;
+}
+
+.session-note-timestamp {
+    color: #58a6ff;
+}
+
+.session-note-inject {
+    color: #f0883e;
+    font-style: italic;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.session-note-text {
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+}
+
+.session-note-delete {
+    background: none;
+    border: none;
+    color: #6e7681;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.session-note-delete:hover {
+    background: #da3633;
+    color: white;
+}
+
+.session-notes-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #30363d;
+    flex-shrink: 0;
+    display: flex;
+    gap: 8px;
+}
+
+.session-notes-actions .btn {
     flex: 1;
 }
 
@@ -1715,6 +1860,59 @@ body.light-mode .gm-notes-header {
 
 body.light-mode .gm-notes-title {
     color: #d97706;
+}
+
+body.light-mode .session-notes-panel {
+    background: #ffffff;
+    border-color: #e0e0e0;
+}
+
+body.light-mode .session-notes-header {
+    background: #f5f5f7;
+    border-color: #e0e0e0;
+}
+
+body.light-mode .session-notes-title {
+    color: #7c3aed;
+}
+
+body.light-mode .session-notes-form textarea {
+    background: #f5f5f7;
+    border-color: #e0e0e0;
+    color: #3a3a4a;
+}
+
+body.light-mode .session-notes-form textarea:focus {
+    border-color: #7c3aed;
+}
+
+body.light-mode .session-note-item {
+    background: #f5f5f7;
+    border-color: #e0e0e0;
+}
+
+body.light-mode .session-note-meta {
+    color: #6a6a7a;
+}
+
+body.light-mode .session-note-timestamp {
+    color: #2563eb;
+}
+
+body.light-mode .session-note-inject {
+    color: #d97706;
+}
+
+body.light-mode .session-note-text {
+    color: #3a3a4a;
+}
+
+body.light-mode .session-note-delete {
+    color: #8a8a9a;
+}
+
+body.light-mode .session-notes-actions {
+    border-color: #e0e0e0;
 }
 
 body.light-mode .library-panel {

@@ -2160,13 +2160,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============ Export Storyline ============
 function exportStoryline() {
     if (!activeStoryline) {
-        showAlert('No Active Storyline', 'Please activate a storyline first before exporting.');
+        showAlert('Please activate a storyline first before exporting.', 'No Active Storyline');
         return;
     }
     
     const storylineData = storylinesData[activeStoryline];
     if (!storylineData) {
-        showAlert('Error', 'Could not find storyline data.');
+        showAlert('Could not find storyline data.', 'Error');
         return;
     }
     
@@ -2325,3 +2325,190 @@ async function confirmImport() {
         showAlert(`Import failed: ${err.message}`, 'Import Failed');
     }
 }
+
+// ============ Session Notes ============
+let sessionNotes = [];
+
+function handleSessionNoteKeydown(event) {
+    // Submit on Enter (without Alt)
+    if (event.key === 'Enter' && !event.altKey) {
+        event.preventDefault();
+        addSessionNote();
+    }
+    // Alt+Enter allows normal line break (default behavior)
+}
+
+function loadSessionNotes() {
+    fetch('/api/session-notes')
+        .then(r => r.json())
+        .then(data => {
+            sessionNotes = data.notes || [];
+            renderSessionNotes();
+        })
+        .catch(err => console.error('Failed to load session notes:', err));
+}
+
+function renderSessionNotes() {
+    const list = document.getElementById('sessionNotesList');
+    if (!list) return;
+    
+    if (sessionNotes.length === 0) {
+        list.innerHTML = '<div class="session-notes-empty" style="color: #6e7681; font-size: 12px; text-align: center; padding: 10px;">No notes yet</div>';
+        return;
+    }
+    
+    list.innerHTML = sessionNotes.map((note, index) => `
+        <div class="session-note-item">
+            <div class="session-note-meta">
+                <span class="session-note-timestamp">${escapeHtml(note.timestamp)}</span>
+                <button class="session-note-delete" onclick="deleteSessionNote(${index})" title="Delete note">✕</button>
+            </div>
+            ${note.inject ? `<div class="session-note-inject">@ ${escapeHtml(note.inject)}</div>` : ''}
+            <div class="session-note-text">${escapeHtml(note.text)}</div>
+        </div>
+    `).join('');
+}
+
+function addSessionNote() {
+    const textarea = document.getElementById('sessionNoteText');
+    const text = textarea.value.trim();
+    
+    if (!text) {
+        showAlert('Please enter a note', 'Empty Note');
+        return;
+    }
+    
+    // Get current inject info with numbering
+    let injectName = '';
+    if (activeStoryline && storylinesData[activeStoryline]) {
+        const data = storylinesData[activeStoryline];
+        const currentIdx = data.current_block || 0;
+        const mainInjectNum = currentIdx + 1;
+        
+        // Check if we're showing a branch inject
+        if (currentDisplaySource !== 'main' && currentDisplayBranchId) {
+            // Find the branch
+            const branch = (data.branches || []).find(b => b.id === currentDisplayBranchId);
+            if (branch) {
+                // Find which main inject this branch is attached to
+                const parentInjectIdx = (data.blocks || []).findIndex(b => b.id === branch.parent_inject_id);
+                const parentInjectNum = parentInjectIdx >= 0 ? parentInjectIdx + 1 : '?';
+                const branchInjectNum = (currentDisplayBranchInjectIdx || 0) + 1;
+                const branchInject = branch.injects && branch.injects[currentDisplayBranchInjectIdx];
+                const branchInjectHeading = branchInject ? branchInject.heading : '';
+                
+                injectName = `#${parentInjectNum}-${branchInjectNum} ${branchInjectHeading}`.trim();
+            }
+        } else {
+            // Main storyline inject
+            const heading = data.blocks && data.blocks[currentIdx] ? data.blocks[currentIdx].heading : '';
+            injectName = `#${mainInjectNum} ${heading}`.trim();
+        }
+    }
+    
+    fetch('/api/session-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            text: text,
+            inject: injectName
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            sessionNotes = data.notes || [];
+            renderSessionNotes();
+            textarea.value = '';
+        }
+    })
+    .catch(err => console.error('Failed to add session note:', err));
+}
+
+function deleteSessionNote(index) {
+    fetch(`/api/session-notes/${index}`, {
+        method: 'DELETE'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            sessionNotes = data.notes || [];
+            renderSessionNotes();
+        }
+    })
+    .catch(err => console.error('Failed to delete session note:', err));
+}
+
+function exportSessionNotes() {
+    if (sessionNotes.length === 0) {
+        showAlert('No notes to export', 'Export Notes');
+        return;
+    }
+    
+    // Create a readable text format
+    let content = 'SESSION NOTES\n';
+    content += '='.repeat(50) + '\n\n';
+    
+    // Add storyline name if available
+    if (activeStoryline && storylinesData[activeStoryline]) {
+        content += `Storyline: ${storylinesData[activeStoryline].name}\n`;
+        content += `Exported: ${new Date().toLocaleString()}\n\n`;
+        content += '-'.repeat(50) + '\n\n';
+    }
+    
+    sessionNotes.forEach((note, index) => {
+        content += `[${note.timestamp}]`;
+        if (note.inject) {
+            content += ` @ ${note.inject}`;
+        }
+        content += '\n';
+        content += note.text + '\n\n';
+    });
+    
+    // Create and download the file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // Generate filename with date
+    const date = new Date().toISOString().split('T')[0];
+    const storylineName = activeStoryline && storylinesData[activeStoryline] 
+        ? storylinesData[activeStoryline].name.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+        : 'session';
+    a.download = `${storylineName}_notes_${date}.txt`;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function clearSessionNotes() {
+    if (sessionNotes.length === 0) {
+        showAlert('No notes to clear', 'Clear Notes');
+        return;
+    }
+    
+    showConfirm('Are you sure you want to delete all session notes? This cannot be undone.', 'Clear All Notes')
+        .then(confirmed => {
+            if (!confirmed) return;
+            
+            fetch('/api/session-notes/clear', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    sessionNotes = [];
+                    renderSessionNotes();
+                }
+            })
+            .catch(err => console.error('Failed to clear session notes:', err));
+        });
+}
+
+// Load session notes on startup
+document.addEventListener('DOMContentLoaded', function() {
+    loadSessionNotes();
+});
