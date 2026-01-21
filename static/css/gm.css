@@ -39,7 +39,7 @@ body {
     padding: 0;
     background: #0d1117;
     color: #c9d1d9;
-    padding-top: 200px;
+    padding-top: 180px;
 }
 
 /* Control Bar */
@@ -71,11 +71,12 @@ h1 {
 .control-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .control-group label {
-    min-width: 80px;
+    min-width: 70px;
     font-size: 13px;
     color: #8b949e;
 }
@@ -85,11 +86,13 @@ h1 {
     background: #21262d;
     border: 1px solid #30363d;
     color: #c9d1d9;
-    padding: 8px 12px;
+    padding: 6px 12px;
     border-radius: 6px;
     font-size: 13px;
     cursor: pointer;
     outline: none;
+    height: 32px;
+    min-width: 150px;
 }
 
 .control-group select:hover,
@@ -135,7 +138,13 @@ h1 {
 .btn-blue { background: #1f6feb; }
 .btn-blue:hover { background: #388bfd; }
 
-.btn-sm { padding: 4px 8px; font-size: 12px; }
+.btn-sm { 
+    padding: 6px 10px; 
+    font-size: 12px; 
+    min-width: fit-content;
+    height: 32px;
+    white-space: nowrap;
+}
 
 .btn-activate { background: #8957e5; }
 .btn-activate:hover { background: #a371f7; }
@@ -311,15 +320,15 @@ h1 {
 .main-layout {
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    height: calc(100vh - 140px); /* Subtract control bar height */
+    padding: 15px 20px;
+    height: calc(100vh - 180px); /* Subtract control bar height */
     overflow: hidden;
 }
 
 /* Top row: Storyline + GM Notes side by side - takes remaining space */
 .storyline-row {
     display: flex;
-    gap: 20px;
+    gap: 15px;
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -373,7 +382,7 @@ h1 {
     flex-shrink: 0;
     display: flex;
     flex-direction: column-reverse;
-    margin-top: 20px;
+    margin-top: 15px;
     max-height: 350px;
 }
 
@@ -650,6 +659,12 @@ h1 {
     line-height: 1.6;
     color: #c9d1d9;
     white-space: pre-wrap;
+}
+
+.gm-notes-empty {
+    font-size: 13px;
+    color: #6e7681;
+    font-style: italic;
 }
 
 /* Import Modal Styles */
@@ -1671,13 +1686,16 @@ body.light-mode .btn-danger {
 }
 
 body.light-mode .master-btn {
-    background: #ffffff;
-    border-color: #d0d0d0;
+    background: #f5f5f7;
+    border: 1px solid #d0d0d0;
+    color: #4a4a5a;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 body.light-mode .master-btn:hover {
-    background: #f0f0f5;
+    background: #e8e8ea;
     border-color: #f59e0b;
+    color: #f59e0b;
 }
 
 body.light-mode .storyline-group {
@@ -1758,6 +1776,10 @@ body.light-mode .gm-notes-inject-title {
 
 body.light-mode .gm-notes-text {
     color: #4a4a5a;
+}
+
+body.light-mode .gm-notes-empty {
+    color: #8a8a9a;
 }
 
 body.light-mode .library-card .block-header {

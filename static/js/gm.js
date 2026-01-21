@@ -719,14 +719,16 @@ function updateGmNotesPanel(block) {
     
     if (!panel || !content) return;
     
+    // Always show the panel
+    panel.style.display = 'flex';
+    
     if (block && block.gm_notes && block.gm_notes.trim()) {
         content.innerHTML = `
             <div class="gm-notes-inject-title">${escapeHtml(block.heading)}</div>
             <div class="gm-notes-text">${escapeHtml(block.gm_notes)}</div>
         `;
-        panel.style.display = 'flex';
     } else {
-        panel.style.display = 'none';
+        content.innerHTML = '';
     }
 }
 
