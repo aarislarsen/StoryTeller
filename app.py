@@ -4,27 +4,35 @@ StoryTeller - Main Application Entry Point
 Run with: python app.py [--password <gm_password>]
 """
 
-import argparse
 import subprocess
 import sys
-import signal
-import secrets
 
-# Dependency check
-REQUIRED = {'flask': 'flask', 'flask_socketio': 'flask-socketio', 'werkzeug': 'werkzeug'}
-missing = [pkg for mod, pkg in REQUIRED.items() if not __import__(mod, globals(), locals(), [], 0) or False]
-# Simple import test
-for mod in REQUIRED:
+# Dependency check - install missing packages before importing them
+REQUIRED = {
+    'flask': 'flask',
+    'flask_socketio': 'flask-socketio',
+    'werkzeug': 'werkzeug',
+    'eventlet': 'eventlet'
+}
+
+missing = []
+for mod, pkg in REQUIRED.items():
     try:
         __import__(mod)
     except ImportError:
-        missing.append(REQUIRED[mod])
+        missing.append(pkg)
 
 if missing:
-    print(f"Installing: {', '.join(set(missing))}")
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--break-system-packages', *set(missing)])
-    print("Restart the application.")
-    sys.exit(0)
+    print(f"Installing missing dependencies: {', '.join(missing)}")
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--break-system-packages', '--quiet', *missing])
+    print("Dependencies installed. Restarting...")
+    # Re-exec the script to pick up newly installed packages
+    import os
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+import argparse
+import signal
+import secrets
 
 from flask import Flask
 from flask_socketio import SocketIO
