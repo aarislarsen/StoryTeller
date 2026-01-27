@@ -6,6 +6,10 @@ Run with: python app.py [--password <gm_password>]
 
 import subprocess
 import sys
+import warnings
+
+# Suppress deprecation warnings (e.g., eventlet deprecation)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 # Dependency check - install missing packages before importing them
 REQUIRED = {

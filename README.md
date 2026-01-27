@@ -16,6 +16,8 @@ A visual interactive storytelling tool for Game Masters running tabletop RPGs, o
 - **Player Type Targeting** - Send specific injects to specific player types (e.g., only the Wizard sees magic-related content)
 - **Silent Targeting** - Players see no indication when injects not meant for them are played
 - **Session Notes** - Capture timestamped observations during play with inject references
+- **Session Clocks** - Current time and session stopwatch displayed next to navigation controls
+- **Inject Preview** - Hover over any inject to see a preview of player-visible content and GM notes
 - **Inject Library** - Save and reuse injects across storylines
 - **Import/Export** - Import/export storylines, player types, and library items as JSON
 - **Zoom Controls** - Zoom in/out with auto-fit to show all injects
@@ -124,6 +126,27 @@ The **Notes for Later** panel lets you capture observations during play.
 5. **Clear All** to reset notes for a new session
 
 Session notes are stored separately from storyline data and persist across browser refreshes.
+
+### Session Clocks
+
+Two digital clocks are displayed next to the navigation buttons:
+
+- **Current Time** - Shows the current time (HH:MM:SS)
+- **Session Stopwatch** - Starts when you first advance the storyline, resets when you click Reset
+
+The stopwatch helps track session duration without needing an external timer.
+
+### Inject Preview
+
+Hover over any inject card (in the storyline, branches, or library) to see a preview popup showing:
+
+- **Day/Time** - If set for the inject
+- **Heading** - The inject title
+- **Image** - Thumbnail if an image is attached
+- **Text** - The player-visible content
+- **GM Notes** - Your private notes (shown in orange)
+
+The preview appears after 700ms of hovering and follows your cursor.
 
 ### Running a Session
 
@@ -339,6 +362,7 @@ storyteller/
 - Flask
 - Flask-SocketIO
 - Werkzeug
+- Eventlet
 
 Dependencies are auto-installed on first run.
 
@@ -359,6 +383,8 @@ Dependencies are auto-installed on first run.
 13. **Take session notes**: Use the Notes for Later panel to capture observations for post-session review
 14. **Export notes after sessions**: Download your session notes before clearing for the next session
 15. **Use zoom to fit**: Press F to auto-zoom so all injects are visible at once
+16. **Hover to preview**: Hover over any inject to quickly see its content without opening the editor
+17. **Track session time**: The stopwatch starts automatically when you advance - use it to pace your session
 
 ## License
 

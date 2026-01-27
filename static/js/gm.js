@@ -2651,9 +2651,163 @@ function initClocks() {
     setInterval(updateCurrentTimeClock, 1000);
 }
 
+// ============ Inject Preview Hover ============
+let previewTimeout = null;
+
+function showInjectPreview(event, block) {
+    const previewCard = document.getElementById('injectPreviewCard');
+    if (!previewCard || !block) return;
+    
+    // Set content
+    const daytimeEl = document.getElementById('previewDaytime');
+    const headingEl = document.getElementById('previewHeading');
+    const imageContainer = document.getElementById('previewImageContainer');
+    const textEl = document.getElementById('previewText');
+    const gmNotesEl = document.getElementById('previewGmNotes');
+    
+    // Day/Time
+    let daytime = '';
+    if (block.day && block.day > 0) {
+        daytime = `Day ${block.day}`;
+        if (block.time) daytime += ` — ${block.time}`;
+    } else if (block.time) {
+        daytime = block.time;
+    }
+    daytimeEl.textContent = daytime;
+    
+    // Heading
+    headingEl.textContent = block.heading || 'Untitled';
+    
+    // Image
+    if (block.image) {
+        imageContainer.innerHTML = `<img src="${block.image}" alt="">`;
+    } else {
+        imageContainer.innerHTML = '';
+    }
+    
+    // Text
+    textEl.textContent = block.text || '';
+    
+    // GM Notes
+    gmNotesEl.textContent = block.gm_notes || '';
+    
+    // Position the card
+    positionPreviewCard(event);
+    
+    // Show the card
+    previewCard.classList.add('visible');
+}
+
+function positionPreviewCard(event) {
+    const previewCard = document.getElementById('injectPreviewCard');
+    if (!previewCard) return;
+    
+    const padding = 15;
+    const cardRect = previewCard.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let left = event.clientX + padding;
+    let top = event.clientY + padding;
+    
+    // Adjust if card would go off right edge
+    if (left + cardRect.width > viewportWidth - padding) {
+        left = event.clientX - cardRect.width - padding;
+    }
+    
+    // Adjust if card would go off bottom edge
+    if (top + cardRect.height > viewportHeight - padding) {
+        top = event.clientY - cardRect.height - padding;
+    }
+    
+    // Ensure not off left or top edge
+    left = Math.max(padding, left);
+    top = Math.max(padding, top);
+    
+    previewCard.style.left = left + 'px';
+    previewCard.style.top = top + 'px';
+}
+
+function hideInjectPreview() {
+    const previewCard = document.getElementById('injectPreviewCard');
+    if (previewCard) {
+        previewCard.classList.remove('visible');
+    }
+}
+
+function initInjectPreviewHover() {
+    document.addEventListener('mouseover', function(e) {
+        const blockCard = e.target.closest('.block-card, .branch-block-card, .library-card');
+        if (!blockCard) return;
+        
+        // Don't show preview if hovering over action buttons
+        if (e.target.closest('.block-actions, .branch-actions, .library-card-actions')) return;
+        
+        // Get the block ID - library cards use data-library-id, others use data-id
+        const blockId = blockCard.dataset.id || blockCard.dataset.libraryId;
+        if (!blockId) return;
+        
+        let block = null;
+        
+        // Check if this is a library card
+        if (blockCard.classList.contains('library-card')) {
+            // Find in library data - skip branches for now
+            const item = libraryInjects.find(item => item.id === blockId);
+            if (item && item.type !== 'branch') {
+                // It's an inject, not a branch
+                block = item;
+            }
+        } else {
+            // Find in storyline data
+            if (!activeStoryline || !storylinesData[activeStoryline]) return;
+            
+            const data = storylinesData[activeStoryline];
+            
+            // Find the block in main storyline or branches
+            block = (data.blocks || []).find(b => b.id === blockId);
+            
+            if (!block) {
+                // Search in branches
+                for (const branch of (data.branches || [])) {
+                    block = (branch.injects || []).find(inj => inj.id === blockId);
+                    if (block) break;
+                }
+            }
+        }
+        
+        if (block) {
+            // Delay before showing
+            previewTimeout = setTimeout(() => showInjectPreview(e, block), 700);
+        }
+    });
+    
+    document.addEventListener('mouseout', function(e) {
+        const blockCard = e.target.closest('.block-card, .branch-block-card, .library-card');
+        if (blockCard) {
+            if (previewTimeout) {
+                clearTimeout(previewTimeout);
+                previewTimeout = null;
+            }
+            hideInjectPreview();
+        }
+    });
+    
+    // Update position on mouse move while hovering
+    document.addEventListener('mousemove', function(e) {
+        const previewCard = document.getElementById('injectPreviewCard');
+        if (previewCard && previewCard.classList.contains('visible')) {
+            const blockCard = e.target.closest('.block-card, .branch-block-card, .library-card');
+            if (blockCard && !e.target.closest('.block-actions, .branch-actions, .library-card-actions')) {
+                positionPreviewCard(e);
+            }
+        }
+    });
+}
+
 // Load session notes on startup
 document.addEventListener('DOMContentLoaded', function() {
     loadSessionNotes();
     adjustLayoutForControlBar();
     initClocks();
+    initInjectPreviewHover();
 });

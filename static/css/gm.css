@@ -1210,6 +1210,91 @@ h1 {
     margin-bottom: 10px;
 }
 
+/* Inject Preview Hover Card */
+.inject-preview-card {
+    display: none;
+    position: fixed;
+    z-index: 500;
+    background: #0d1117;
+    border: 2px solid #58a6ff;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    max-width: 350px;
+    min-width: 250px;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.inject-preview-card.visible {
+    display: block;
+}
+
+.inject-preview-daytime {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #f0883e;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+}
+
+.inject-preview-daytime:empty {
+    display: none;
+}
+
+.inject-preview-heading {
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #58a6ff;
+    border-bottom: 1px solid #30363d;
+}
+
+.inject-preview-image {
+    max-height: 200px;
+    overflow: hidden;
+}
+
+.inject-preview-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.inject-preview-image:empty {
+    display: none;
+}
+
+.inject-preview-text {
+    padding: 12px;
+    font-size: 13px;
+    color: #c9d1d9;
+    line-height: 1.5;
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.inject-preview-text:empty {
+    display: none;
+}
+
+.inject-preview-gm-notes {
+    padding: 12px;
+    font-size: 12px;
+    color: #f0883e;
+    background: rgba(240, 136, 62, 0.1);
+    border-top: 1px solid #30363d;
+    line-height: 1.4;
+    max-height: 100px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.inject-preview-gm-notes:empty {
+    display: none;
+}
+
 /* Modal */
 .modal-overlay {
     display: none;
@@ -2209,6 +2294,33 @@ body.light-mode .add-branch-inject {
 
 body.light-mode .add-branch-inject:hover {
     background: rgba(245, 158, 11, 0.1);
+}
+
+body.light-mode .inject-preview-card {
+    background: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode .inject-preview-daytime {
+    color: #d97706;
+    background: #f5f5f7;
+    border-color: #e0e0e0;
+}
+
+body.light-mode .inject-preview-heading {
+    color: #2563eb;
+    border-color: #e0e0e0;
+}
+
+body.light-mode .inject-preview-text {
+    color: #3a3a4a;
+}
+
+body.light-mode .inject-preview-gm-notes {
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.1);
+    border-color: #e0e0e0;
 }
 
 body.light-mode .modal-overlay {
