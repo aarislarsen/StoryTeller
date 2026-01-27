@@ -302,35 +302,6 @@ h1 {
 .nav-buttons {
     display: flex;
     gap: 8px;
-    align-items: center;
-}
-
-.nav-clocks {
-    display: flex;
-    gap: 8px;
-    margin-left: 12px;
-    padding-left: 12px;
-    border-left: 1px solid #30363d;
-}
-
-.nav-clock {
-    display: flex;
-    align-items: center;
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    color: #8b949e;
-    background: #21262d;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 8px 12px;
-}
-
-.nav-clock .clock-display {
-    min-width: 60px;
-}
-
-#stopwatchClock {
-    color: #58a6ff;
 }
 
 .timer-section {
@@ -382,7 +353,6 @@ h1 {
     flex-direction: column;
     gap: 15px;
     min-height: 0;
-    height: 100%;
 }
 
 /* GM Notes Panel */
@@ -392,7 +362,7 @@ h1 {
     border-radius: 6px;
     display: flex;
     flex-direction: column;
-    height: 35%;
+    height: 500px;
     flex-shrink: 0;
 }
 
@@ -539,6 +509,7 @@ h1 {
 }
 
 .session-notes-actions {
+    margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid #30363d;
     flex-shrink: 0;
@@ -2341,20 +2312,6 @@ body.light-mode .progress-number {
 
 body.light-mode .progress-label {
     color: #6a6a7a;
-}
-
-body.light-mode .nav-clocks {
-    border-left-color: #d0d0d5;
-}
-
-body.light-mode .nav-clock {
-    color: #6a6a7a;
-    background: #f5f5f7;
-    border-color: #d0d0d5;
-}
-
-body.light-mode #stopwatchClock {
-    color: #2563eb;
 }
 
 body.light-mode .playback-status {

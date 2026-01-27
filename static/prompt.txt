@@ -1,0 +1,175 @@
+Prompt for ChatGPT to Generate StoryTeller Adventures
+=====================================================
+
+I need you to create a JSON data file for a storytelling application called StoryTeller. This application is used by a Game Master (GM) to guide players through an interactive story with visual injects (story beats) that appear on player screens.
+
+**Create a Dungeons & Dragons-style fairytale adventure suitable for children aged 6-8.** The story should be magical, whimsical, and age-appropriate with themes of friendship, courage, and helping others. No scary monsters or violence - keep it light and fun.
+
+**The JSON structure must follow this exact format:**
+
+```json
+{
+  "storylines": {
+    "STORYLINE_UUID": {
+      "name": "Story Title",
+      "blocks": [
+        {
+          "id": "UNIQUE_UUID",
+          "heading": "Short title shown to players",
+          "text": "The story text shown to players (2-4 sentences, simple language)",
+          "gm_notes": "Private notes for the GM with tips, questions to ask players, or actions to take",
+          "duration": 0,
+          "day": 1,
+          "time": "09:00",
+          "target_player_types": [],
+          "image": null
+        }
+      ],
+      "branches": [
+        {
+          "id": "BRANCH_UUID",
+          "name": "Branch Name",
+          "parent_inject_id": "ID of the inject this branches from",
+          "auto_trigger": false,
+          "merge_to_inject_id": "ID of inject to resume at after branch, or null",
+          "current_inject": 0,
+          "injects": [
+            {
+              "id": "UNIQUE_UUID",
+              "heading": "Branch inject title",
+              "text": "Branch story text",
+              "gm_notes": "GM notes for this branch inject",
+              "duration": 0,
+              "day": 1,
+              "time": "10:30",
+              "target_player_types": [],
+              "image": null
+            }
+          ]
+        }
+      ],
+      "current_block": 0,
+      "active_branches": []
+    }
+  },
+  "active_storyline": null,
+  "player_types": ["Knight", "Wizard", "Ranger"],
+  "player_links": {},
+  "generic_player_link": null,
+  "inject_library": []
+}
+```
+
+**Requirements:**
+
+1. **Main storyline:** Create 12-15 injects telling a complete fairytale adventure (beginning, middle, end)
+
+2. **Day and Time fields:** Use the `day` and `time` fields to show story progression:
+   - `day`: Integer (0 = hidden, 1+ displays as "Day 1", "Day 2", etc.)
+   - `time`: String in "HH:MM" format (empty string = hidden)
+   - Use these to show the passage of time in your story (e.g., morning quest start, afternoon adventure, evening celebration)
+   - Not every inject needs day/time - use them at key story moments
+
+3. **Player types:** Use three player types: "Knight", "Wizard", and "Ranger" - occasionally use `target_player_types` to send specific injects to specific players (e.g., `["Wizard"]` for a magic-related moment, `["Knight"]` for a bravery moment)
+
+4. **Branches for player choices:** Create 4-5 manual branches (`"auto_trigger": false`) that represent meaningful choices players can make:
+   - At decision points in the story, create 2-3 branches on the same inject representing different choices (e.g., "Take the forest path", "Take the mountain path", "Take the river path")
+   - Each choice branch should have 2-4 injects showing the consequences of that choice
+   - Some branches should use `merge_to_inject_id` to skip ahead in the main storyline (e.g., a shortcut that bypasses some encounters)
+   - Some branches should merge back to the next sequential inject (set `merge_to_inject_id` to null or the next inject)
+   - Make choices meaningful but all lead to a happy ending
+
+5. **Branch rules to follow:**
+   - All branches must be manual (`"auto_trigger": false`) since multiple branches will be attached to the same inject
+   - An inject can only have ONE auto-trigger branch, OR multiple manual branches - never both
+   - Use manual branches for all choice points
+
+6. **Example choice structure:**
+   - Inject #5: "You reach a crossroads. Three paths lie before you."
+   - Branch A (parent: #5): "The Sunny Meadow Path" - 2 injects, merges to #8
+   - Branch B (parent: #5): "The Whispering Woods Path" - 3 injects, merges to #8  
+   - Branch C (parent: #5): "The Stepping Stones Path" - 2 injects, merges to #10 (skips ahead!)
+
+7. **Durations:** 
+   - Set `"duration": 0` for most injects (GM advances manually)
+   - Set `"duration": 20` or `"duration": 30` for a few atmospheric moments where auto-advance fits
+
+8. **GM Notes:** Include helpful GM notes with:
+   - Questions to ask the players ("Ask the children which path looks most exciting!")
+   - Actions ("Have players vote on which choice to take")
+   - Dice rolls ("Roll a D6 - on 4+, they find a shiny coin!")
+   - Tips ("This is a good moment for a snack break")
+   - Choice guidance ("If players can't decide, suggest the Meadow Path for younger groups")
+
+9. **Story elements to include:**
+   - A clear quest or goal established early
+   - Friendly magical creatures (talking animals, friendly fairies, helpful sprites)
+   - 2-3 meaningful choice points where players decide the path
+   - Moments where each player type gets to shine
+   - Consequences that feel different but all lead to success
+   - A happy, satisfying ending that references choices made
+   - Age-appropriate humor and wonder
+
+10. **UUIDs:** Generate valid UUIDs for all `id` fields (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+
+11. **Language:** Use simple vocabulary and short sentences appropriate for 6-8 year olds being read to
+
+**Example choice point with branches:**
+
+Main inject #6 might be: "The fairy asks: 'How will you help wake the sleeping dragon?'"
+
+Then create three branches all with `parent_inject_id` pointing to inject #6:
+- "Sing a Gentle Song" branch (3 injects) → merges to inject #9
+- "Tickle His Nose" branch (2 injects) → merges to inject #9
+- "Find His Teddy Bear" branch (4 injects) → merges to inject #11 (longer path skips past an encounter)
+
+**Example day/time usage:**
+
+```json
+{
+  "id": "...",
+  "heading": "A New Day Dawns",
+  "text": "The sun rises over the Enchanted Forest. Birds sing their morning songs.",
+  "day": 1,
+  "time": "07:00",
+  ...
+}
+```
+
+Later in the story:
+```json
+{
+  "id": "...", 
+  "heading": "The Victory Feast",
+  "text": "As the sun sets, the village celebrates your brave deeds!",
+  "day": 1,
+  "time": "18:00",
+  ...
+}
+```
+
+For a multi-day adventure:
+```json
+{
+  "id": "...",
+  "heading": "Camp Under the Stars", 
+  "text": "You rest by the campfire, dreaming of tomorrow's adventure.",
+  "day": 1,
+  "time": "21:00",
+  ...
+}
+```
+
+Then the next morning:
+```json
+{
+  "id": "...",
+  "heading": "The Journey Continues",
+  "text": "After a good night's sleep, you set off refreshed and ready!",
+  "day": 2,
+  "time": "08:00",
+  ...
+}
+```
+
+**Output only the JSON file with no additional explanation.**

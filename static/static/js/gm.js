@@ -67,10 +67,6 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 1.5;
 const ZOOM_STEP = 0.1;
 
-// Stopwatch state
-let stopwatchStartTime = null;
-let stopwatchInterval = null;
-
 // ============ Socket Events ============
 socket.on('connect', () => {
     setConnectionStatus(true);
@@ -1074,17 +1070,14 @@ function renameCurrentStoryline(name) {
 // ============ Navigation ============
 function nextBlock() { 
     shouldScrollToNowPlaying = true;
-    startStopwatch();
     socket.emit('next_block'); 
 }
 function previousBlock() { 
     shouldScrollToNowPlaying = true;
-    startStopwatch();
     socket.emit('previous_block'); 
 }
 function goToBlock(idx) { 
     shouldScrollToNowPlaying = true;
-    startStopwatch();
     socket.emit('go_to_block', {index: idx}); 
 }
 function goToBranchInject(branchId, injectIdx) {
@@ -1101,9 +1094,6 @@ function resetAll() {
     if (isPlaying) {
         togglePlayback();
     }
-    
-    // Reset the stopwatch
-    resetStopwatch();
 }
 
 // ============ Utilities ============
@@ -2604,56 +2594,8 @@ function clearSessionNotes() {
         });
 }
 
-// ============ Clocks ============
-function updateCurrentTimeClock() {
-    const clock = document.getElementById('currentTimeClock');
-    if (!clock) return;
-    
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    clock.textContent = `${hours}:${minutes}:${seconds}`;
-}
-
-function updateStopwatch() {
-    const clock = document.getElementById('stopwatchClock');
-    if (!clock || !stopwatchStartTime) return;
-    
-    const elapsed = Date.now() - stopwatchStartTime;
-    const totalSeconds = Math.floor(elapsed / 1000);
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
-    clock.textContent = `${hours}:${minutes}:${seconds}`;
-}
-
-function startStopwatch() {
-    if (stopwatchStartTime) return; // Already running
-    
-    stopwatchStartTime = Date.now();
-    stopwatchInterval = setInterval(updateStopwatch, 1000);
-    updateStopwatch();
-}
-
-function resetStopwatch() {
-    stopwatchStartTime = null;
-    if (stopwatchInterval) {
-        clearInterval(stopwatchInterval);
-        stopwatchInterval = null;
-    }
-    const clock = document.getElementById('stopwatchClock');
-    if (clock) clock.textContent = '00:00:00';
-}
-
-function initClocks() {
-    updateCurrentTimeClock();
-    setInterval(updateCurrentTimeClock, 1000);
-}
-
 // Load session notes on startup
 document.addEventListener('DOMContentLoaded', function() {
     loadSessionNotes();
     adjustLayoutForControlBar();
-    initClocks();
 });
