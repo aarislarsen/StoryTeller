@@ -128,6 +128,11 @@ socket.on('playback_update', (data) => {
     updateCountdownOverlay(data);
 });
 
+socket.on('session_notes_updated', (data) => {
+    sessionNotes = data.notes || [];
+    renderSessionNotes();
+});
+
 // ============ Connection Status ============
 function setConnectionStatus(connected) {
     const el = document.getElementById('connectionStatus');
