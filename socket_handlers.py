@@ -18,6 +18,11 @@ last_shown_inject = {}
 _socketio = None
 
 
+def get_socketio():
+    """Return the module-level Socket.IO instance for other modules to emit events."""
+    return _socketio
+
+
 def get_storyline():
     """Get the active storyline or None."""
     storyline_id = app_data.get('active_storyline')

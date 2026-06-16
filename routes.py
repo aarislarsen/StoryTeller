@@ -1189,6 +1189,13 @@ def register_routes(app):
         notes_file = DATA_DIR / 'session_notes.json'
         with open(notes_file, 'w') as f:
             json.dump(data, f, indent=2)
+
+    def _emit_gm(event, data=None):
+        """Emit a Socket.IO event to the GM room."""
+        from socket_handlers import get_socketio
+        socketio = get_socketio()
+        if socketio is not None:
+            socketio.emit(event, data, room='gm')
     
     @app.route('/api/session-notes', methods=['GET'])
     @require_gm
@@ -1225,8 +1232,9 @@ def register_routes(app):
         data['notes'].insert(0, note)
         
         save_session_notes(data)
+        _emit_gm('session_notes_updated', {'notes': data['notes']})
         return jsonify({'success': True, 'notes': data['notes']})
-    
+
     @app.route('/api/session-notes/<int:index>', methods=['DELETE'])
     @require_gm
     def delete_session_note(index):
@@ -1236,8 +1244,9 @@ def register_routes(app):
         if 0 <= index < len(data['notes']):
             data['notes'].pop(index)
             save_session_notes(data)
+            _emit_gm('session_notes_updated', {'notes': data['notes']})
             return jsonify({'success': True, 'notes': data['notes']})
-        
+
         return jsonify({'error': 'Note not found'}), 404
 
     @app.route('/api/session-notes/clear', methods=['POST'])
@@ -1245,4 +1254,5 @@ def register_routes(app):
     def clear_session_notes():
         """Clear all session notes."""
         save_session_notes({'notes': []})
+        _emit_gm('session_notes_updated', {'notes': []})
         return jsonify({'success': True})
