@@ -78,6 +78,7 @@ socket.on('connect', () => {
     loadStorylines();
     loadPlayerTypesData(); // Load player types for inject forms
     loadLibrary(); // Load inject library
+    refreshDataStatus(); // Warn if the data file is bloated by large images
 });
 
 socket.on('disconnect', () => {
@@ -233,6 +234,65 @@ function loadStorylines() {
                 console.error('Error loading storylines:', err);
             }
         });
+}
+
+// ============ Data Size Guard (image bloat) ============
+let _dataWarningDismissed = false;
+
+function _fmtMB(bytes) {
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function refreshDataStatus() {
+    fetch('/api/data-status')
+        .then(r => r.ok ? r.json() : null)
+        .then(s => {
+            const banner = document.getElementById('dataWarningBanner');
+            if (!s || !banner) return;
+            if (s.over_threshold && !_dataWarningDismissed) {
+                document.getElementById('dataWarningText').textContent =
+                    `Storyline data is large (${_fmtMB(s.size_bytes)}). Big images slow saving and loading.`;
+                banner.style.display = 'flex';
+            } else {
+                banner.style.display = 'none';
+            }
+        })
+        .catch(() => {});
+}
+
+function dismissDataWarning() {
+    _dataWarningDismissed = true;
+    const banner = document.getElementById('dataWarningBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+async function optimizeImages() {
+    const btn = document.getElementById('optimizeImagesBtn');
+    const txt = document.getElementById('dataWarningText');
+    if (btn) btn.disabled = true;
+    if (txt) txt.textContent = 'Optimizing images… this may take a moment.';
+    try {
+        const res = await fetch('/api/optimize-images', { method: 'POST' });
+        const data = await res.json();
+        if (data && data.success) {
+            showAlert(
+                `Scaled ${data.scaled_images} image(s). ` +
+                `Data file: ${_fmtMB(data.size_before)} → ${_fmtMB(data.size_after)}.` +
+                (data.backup ? `\nBackup saved: ${data.backup}` : ''),
+                'Images Optimized'
+            );
+            if (currentStoryline) await renderStoryline(currentStoryline);
+        } else {
+            showAlert('Image optimization did not complete.', 'Error');
+        }
+    } catch (e) {
+        console.error('optimizeImages failed:', e);
+        showAlert('Image optimization failed. See console.', 'Error');
+    } finally {
+        if (btn) btn.disabled = false;
+        _dataWarningDismissed = false;
+        refreshDataStatus();
+    }
 }
 
 function populateStorylineSelect(data) {
@@ -916,6 +976,37 @@ async function deleteBlock(id) {
         });
 }
 
+// Downscale large raster images in-browser before upload (cuts transit + storage).
+// GIF/SVG are left untouched. Falls back to the original file on any failure.
+async function scaleImageForUpload(file, maxDim = 1600, quality = 0.82, thresholdBytes = 500 * 1024) {
+    if (!file || !file.type || !file.type.startsWith('image/')) return file;
+    if (file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+    try {
+        const bitmap = await createImageBitmap(file);
+        const longest = Math.max(bitmap.width, bitmap.height);
+        const scale = Math.min(1, maxDim / longest);
+        // Already small in both dimensions and bytes -> leave as-is.
+        if (scale === 1 && file.size <= thresholdBytes) {
+            if (bitmap.close) bitmap.close();
+            return file;
+        }
+        const w = Math.round(bitmap.width * scale);
+        const h = Math.round(bitmap.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+        if (bitmap.close) bitmap.close();
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+        if (!blob || blob.size >= file.size) return file; // no gain -> keep original
+        const name = (file.name || 'image').replace(/\.[^.]+$/, '') + '.jpg';
+        return new File([blob], name, { type: 'image/jpeg' });
+    } catch (err) {
+        console.warn('Image scale failed, uploading original:', err);
+        return file;
+    }
+}
+
 document.getElementById('blockForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentStoryline) {
@@ -934,7 +1025,8 @@ document.getElementById('blockForm').addEventListener('submit', async (e) => {
     formData.append('existing_image', document.getElementById('existingImage').value);
     formData.append('target_player_types', JSON.stringify(getSelectedPlayerTypes('blockPlayerTypes')));
     
-    const img = document.getElementById('blockImage').files[0];
+    let img = document.getElementById('blockImage').files[0];
+    if (img) img = await scaleImageForUpload(img);
     if (img) formData.append('image', img);
     
     const blockId = document.getElementById('blockId').value;
@@ -970,9 +1062,11 @@ document.getElementById('blockForm').addEventListener('submit', async (e) => {
     }
     
     closeBlockModal();
-    loadStorylines();
+    // D2: avoid refetching the entire app_data; renderStoryline refreshes this
+    // storyline (and storylinesData[currentStoryline]) on its own.
     await renderStoryline(currentStoryline);
-    
+    refreshDataStatus();
+
     if (isNewInject) {
         // Scroll to the new inject (last one in the list)
         const mainRow = document.querySelector('.main-storyline-row');
@@ -1380,7 +1474,8 @@ document.getElementById('branchInjectForm').addEventListener('submit', async (e)
     formData.append('existing_image', document.getElementById('branchInjectExistingImage').value);
     formData.append('target_player_types', JSON.stringify(getSelectedPlayerTypes('branchInjectPlayerTypes')));
     
-    const img = document.getElementById('branchInjectImage').files[0];
+    let img = document.getElementById('branchInjectImage').files[0];
+    if (img) img = await scaleImageForUpload(img);
     if (img) formData.append('image', img);
     
     const url = injectId 
@@ -1874,7 +1969,8 @@ document.getElementById('libraryInjectForm').addEventListener('submit', async (e
     formData.append('duration', document.getElementById('libraryInjectDuration').value || 0);
     formData.append('target_player_types', JSON.stringify(getSelectedPlayerTypes('libraryInjectPlayerTypes')));
     
-    const img = document.getElementById('libraryInjectImage').files[0];
+    let img = document.getElementById('libraryInjectImage').files[0];
+    if (img) img = await scaleImageForUpload(img);
     if (img) formData.append('image', img);
     
     const injectId = document.getElementById('libraryInjectId').value;
