@@ -72,6 +72,14 @@
         </div>
     </div>
     
+    <!-- Data size warning banner -->
+    <div class="data-warning-banner" id="dataWarningBanner" style="display:none;">
+        <span class="data-warning-icon">⚠️</span>
+        <span id="dataWarningText"></span>
+        <button class="btn btn-sm" id="optimizeImagesBtn" onclick="optimizeImages()">Optimize images now</button>
+        <button class="data-warning-close" onclick="dismissDataWarning()" title="Dismiss">✕</button>
+    </div>
+
     <!-- Main Content -->
     <div class="main-layout">
         <!-- Top row: Storyline + Side Panels -->
