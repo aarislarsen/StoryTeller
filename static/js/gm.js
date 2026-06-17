@@ -1704,29 +1704,36 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ============ Theme Toggle ============
-let isDarkMode = true;
+// ============ Theme Switcher ============
+// Clicking (or pressing T) cycles through the themes in order.
+const THEMES = [
+    { id: 'dark',   cls: '',             icon: '🌙', label: 'Dark' },
+    { id: 'light',  cls: 'light-mode',   icon: '☀️', label: 'Light' },
+    { id: 'orange', cls: 'theme-orange', icon: '🟠', label: 'Orange' },
+    { id: 'dnd',    cls: 'theme-dnd',    icon: '⚔️', label: 'D&D' },
+];
 
-function toggleTheme() {
-    isDarkMode = !isDarkMode;
-    document.body.classList.toggle('light-mode', !isDarkMode);
-    
+function applyTheme(id) {
+    const theme = THEMES.find(t => t.id === id) || THEMES[0];
+    document.body.classList.remove('light-mode', 'theme-orange', 'theme-dnd');
+    if (theme.cls) document.body.classList.add(theme.cls);
     const themeBtn = document.getElementById('themeBtn');
-    themeBtn.textContent = isDarkMode ? '☀️' : '🌙';
-    
-    // Save preference
-    localStorage.setItem('gmTheme', isDarkMode ? 'dark' : 'light');
+    if (themeBtn) {
+        themeBtn.textContent = theme.icon;
+        themeBtn.title = `Theme: ${theme.label} — click to change`;
+    }
+    localStorage.setItem('gmTheme', theme.id);
 }
 
-// Load saved theme on startup
+function toggleTheme() {
+    const current = localStorage.getItem('gmTheme') || 'dark';
+    const idx = THEMES.findIndex(t => t.id === current);
+    applyTheme(THEMES[(idx + 1) % THEMES.length].id);
+}
+
+// Load saved theme on startup (old 'dark'/'light' values still valid)
 (function initTheme() {
-    const savedTheme = localStorage.getItem('gmTheme');
-    if (savedTheme === 'light') {
-        isDarkMode = false;
-        document.body.classList.add('light-mode');
-        const themeBtn = document.getElementById('themeBtn');
-        if (themeBtn) themeBtn.textContent = '🌙';
-    }
+    applyTheme(localStorage.getItem('gmTheme') || 'dark');
 })();
 
 // ============ Help Modal ============

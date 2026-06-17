@@ -218,35 +218,36 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ============ Theme Toggle ============
-let isDarkMode = true;
+// ============ Theme Switcher ============
+// Clicking (or pressing T) cycles through the themes in order.
+const THEMES = [
+    { id: 'dark',   cls: '',             icon: '🌙', label: 'Dark' },
+    { id: 'light',  cls: 'light-mode',   icon: '☀️', label: 'Light' },
+    { id: 'orange', cls: 'theme-orange', icon: '🟠', label: 'Orange' },
+    { id: 'dnd',    cls: 'theme-dnd',    icon: '⚔️', label: 'D&D' },
+];
 
-function toggleTheme() {
-    isDarkMode = !isDarkMode;
-    document.body.classList.toggle('light-mode', !isDarkMode);
-    
-    const themeBtn = document.getElementById('themeBtn');
-    const themeIcon = document.getElementById('themeIcon');
-    
-    if (isDarkMode) {
-        themeIcon.textContent = '☀️';
-        themeBtn.querySelector('span:last-child').textContent = 'Light';
-    } else {
-        themeIcon.textContent = '🌙';
-        themeBtn.querySelector('span:last-child').textContent = 'Dark';
+function applyTheme(id) {
+    const theme = THEMES.find(t => t.id === id) || THEMES[0];
+    document.body.classList.remove('light-mode', 'theme-orange', 'theme-dnd');
+    if (theme.cls) document.body.classList.add(theme.cls);
+    const icon = document.getElementById('themeIcon');
+    const btn = document.getElementById('themeBtn');
+    if (icon) icon.textContent = theme.icon;
+    if (btn) {
+        const label = btn.querySelector('span:last-child');
+        if (label) label.textContent = theme.label;
     }
-    
-    // Save preference
-    localStorage.setItem('playerTheme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('playerTheme', theme.id);
 }
 
-// Load saved theme on startup
+function toggleTheme() {
+    const current = localStorage.getItem('playerTheme') || 'dark';
+    const idx = THEMES.findIndex(t => t.id === current);
+    applyTheme(THEMES[(idx + 1) % THEMES.length].id);
+}
+
+// Load saved theme on startup (old 'dark'/'light' values still valid)
 (function initTheme() {
-    const savedTheme = localStorage.getItem('playerTheme');
-    if (savedTheme === 'light') {
-        isDarkMode = false;
-        document.body.classList.add('light-mode');
-        document.getElementById('themeIcon').textContent = '🌙';
-        document.getElementById('themeBtn').querySelector('span:last-child').textContent = 'Dark';
-    }
+    applyTheme(localStorage.getItem('playerTheme') || 'dark');
 })();

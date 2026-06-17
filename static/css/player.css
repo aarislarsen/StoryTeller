@@ -9,12 +9,12 @@
 }
 
 ::-webkit-scrollbar-track {
-    background: #12121a;
+    background: var(--bg-0, #12121a);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3c3c50;
+    background: var(--border, #3c3c50);
     border-radius: 4px;
 }
 
@@ -23,13 +23,13 @@
 }
 
 ::-webkit-scrollbar-corner {
-    background: #12121a;
+    background: var(--bg-0, #12121a);
 }
 
 /* Firefox scrollbar */
 html {
     scrollbar-width: thin;
-    scrollbar-color: #3c3c50 #12121a;
+    scrollbar-color: var(--border, #3c3c50) var(--bg-0, #12121a);
 }
 
 html, body {
@@ -37,7 +37,7 @@ html, body {
     overflow: hidden;
     background: #0a0a0f;
     font-family: 'Georgia', 'Times New Roman', serif;
-    color: #e8e8f0;
+    color: var(--text, #e8e8f0);
 }
 
 .app {
@@ -52,7 +52,7 @@ html, body {
     top: 12px;
     left: 15px;
     z-index: 100;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, var(--accent, #6366f1), #8b5cf6);
     color: white;
     padding: 8px 16px;
     border-radius: 20px;
@@ -86,7 +86,7 @@ html, body {
     border: 1px solid rgba(100, 100, 120, 0.3);
     border-radius: 8px;
     padding: 8px 12px;
-    color: #a0a0b0;
+    color: var(--muted, #a0a0b0);
     cursor: pointer;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 13px;
@@ -98,7 +98,7 @@ html, body {
 
 .header-btn:hover {
     background: rgba(50, 50, 60, 0.9);
-    color: #e8e8f0;
+    color: var(--text, #e8e8f0);
     border-color: rgba(99, 102, 241, 0.5);
 }
 
@@ -129,7 +129,7 @@ html, body {
     z-index: 100;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 12px;
-    color: #606070;
+    color: var(--dim, #606070);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -139,7 +139,7 @@ html, body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #ef4444;
+    background: var(--danger, #ef4444);
 }
 
 .connection-status.connected .dot { background: #22c55e; }
@@ -220,7 +220,7 @@ html, body {
     font-weight: 400;
     line-height: 1.2;
     margin-bottom: clamp(12px, 3vw, 24px);
-    color: #818cf8;
+    color: var(--accent, #818cf8);
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
@@ -229,7 +229,7 @@ html, body {
 .card-text {
     font-size: clamp(14px, 2.5vw, 20px);
     line-height: 1.7;
-    color: #a0a0b0;
+    color: var(--muted, #a0a0b0);
     white-space: pre-wrap;
     flex: 1;
 }
@@ -314,7 +314,7 @@ html, body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: #a371f7;
+    color: var(--accent, #a371f7);
     background: rgba(137, 87, 229, 0.15);
     padding: 10px 20px;
     text-align: center;
@@ -322,7 +322,7 @@ html, body {
 }
 
 .branch-title {
-    color: #a371f7 !important;
+    color: var(--accent, #a371f7) !important;
 }
 
 /* Waiting State */
@@ -340,12 +340,12 @@ html, body {
 .waiting-title {
     font-size: 28px;
     margin-bottom: 12px;
-    color: #a0a0b0;
+    color: var(--muted, #a0a0b0);
 }
 
 .waiting-text {
     font-size: 16px;
-    color: #606070;
+    color: var(--dim, #606070);
 }
 
 /* Progress Bar */
@@ -360,7 +360,7 @@ html, body {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #818cf8);
+    background: linear-gradient(90deg, var(--accent, #6366f1), var(--accent, #818cf8));
     transition: width 0.3s ease;
 }
 
@@ -398,7 +398,7 @@ html, body {
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 18px;
     font-weight: 600;
-    color: #e8e8f0;
+    color: var(--text, #e8e8f0);
 }
 
 .history-close {
@@ -406,7 +406,7 @@ html, body {
     border: 1px solid rgba(100, 100, 120, 0.3);
     border-radius: 8px;
     padding: 10px 16px;
-    color: #a0a0b0;
+    color: var(--muted, #a0a0b0);
     cursor: pointer;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 13px;
@@ -415,7 +415,7 @@ html, body {
 
 .history-close:hover {
     background: rgba(50, 50, 60, 0.9);
-    color: #e8e8f0;
+    color: var(--text, #e8e8f0);
 }
 
 .history-content {
@@ -435,7 +435,7 @@ html, body {
 .history-item {
     background: rgba(25, 25, 35, 0.9);
     border: 1px solid rgba(60, 60, 80, 0.3);
-    border-left: 3px solid #8957e5;
+    border-left: 3px solid var(--accent, #8957e5);
     border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
@@ -444,13 +444,13 @@ html, body {
 
 .history-item:hover {
     border-color: rgba(99, 102, 241, 0.4);
-    border-left-color: #a371f7;
+    border-left-color: var(--accent, #a371f7);
     transform: translateY(-2px);
 }
 
 .history-item.current {
     border-color: rgba(99, 102, 241, 0.6);
-    border-left-color: #a371f7;
+    border-left-color: var(--accent, #a371f7);
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
 }
 
@@ -477,7 +477,7 @@ html, body {
 .history-item-title {
     font-size: 16px;
     font-weight: 500;
-    color: #e8e8f0;
+    color: var(--text, #e8e8f0);
     margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
@@ -496,7 +496,7 @@ html, body {
 .history-empty {
     text-align: center;
     padding: 60px 20px;
-    color: #606070;
+    color: var(--dim, #606070);
 }
 
 /* Scrollbar */
@@ -508,7 +508,7 @@ html, body {
 /* ============ Light Mode ============ */
 body.light-mode {
     background: #f5f5f7;
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
 }
 
 body.light-mode .header {
@@ -523,12 +523,12 @@ body.light-mode .player-type-badge {
 body.light-mode .header-btn {
     background: rgba(255, 255, 255, 0.9);
     border-color: rgba(0, 0, 0, 0.1);
-    color: #4a4a5a;
+    color: var(--border, #4a4a5a);
 }
 
 body.light-mode .header-btn:hover {
     background: rgba(255, 255, 255, 1);
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
     border-color: rgba(99, 102, 241, 0.5);
 }
 
@@ -539,7 +539,7 @@ body.light-mode .card {
 }
 
 body.light-mode .card-title {
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
 }
 
 body.light-mode .card-day-time {
@@ -547,15 +547,15 @@ body.light-mode .card-day-time {
 }
 
 body.light-mode .card-text {
-    color: #4a4a5a;
+    color: var(--border, #4a4a5a);
 }
 
 body.light-mode .waiting {
-    color: #4a4a5a;
+    color: var(--border, #4a4a5a);
 }
 
 body.light-mode .waiting-title {
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
 }
 
 body.light-mode .waiting-text {
@@ -568,7 +568,7 @@ body.light-mode .progress-bar {
 
 body.light-mode .connection-status {
     background: rgba(255, 255, 255, 0.9);
-    color: #4a4a5a;
+    color: var(--border, #4a4a5a);
     border-color: rgba(0, 0, 0, 0.1);
 }
 
@@ -582,7 +582,7 @@ body.light-mode .history-header {
 }
 
 body.light-mode .history-title {
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
 }
 
 body.light-mode .history-close {
@@ -590,24 +590,24 @@ body.light-mode .history-close {
 }
 
 body.light-mode .history-close:hover {
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
     background: rgba(0, 0, 0, 0.05);
 }
 
 body.light-mode .history-item {
     background: #f8f8fa;
     border-color: rgba(0, 0, 0, 0.08);
-    border-left-color: #8957e5;
+    border-left-color: var(--accent, #8957e5);
 }
 
 body.light-mode .history-item:hover {
     background: #f0f0f5;
     border-color: rgba(99, 102, 241, 0.3);
-    border-left-color: #a371f7;
+    border-left-color: var(--accent, #a371f7);
 }
 
 body.light-mode .history-item-title {
-    color: #1a1a2e;
+    color: var(--bg-1, #1a1a2e);
 }
 
 body.light-mode .history-item-preview {
@@ -638,4 +638,29 @@ body.light-mode ::-webkit-scrollbar-corner {
 /* Firefox scrollbar for light mode */
 body.light-mode * {
     scrollbar-color: rgba(0, 0, 0, 0.15) #f0f0f5;
+}
+
+/* ============ Additional themes (override palette variables) ============ */
+/* Orange & black */
+body.theme-orange {
+    --bg-0: #0a0a0a;
+    --bg-1: #161210;
+    --text: #f3e7d5;
+    --muted: #c79a63;
+    --dim: #8f7340;
+    --border: #3d2f17;
+    --accent: #ff8c1a;
+    --danger: #ef4444;
+}
+
+/* True D&D style: red, white & black */
+body.theme-dnd {
+    --bg-0: #0a0707;
+    --bg-1: #16100f;
+    --text: #f5efe2;
+    --muted: #c9b39b;
+    --dim: #9c8466;
+    --border: #5a2420;
+    --accent: #b91c1c;
+    --danger: #ff4d4d;
 }
