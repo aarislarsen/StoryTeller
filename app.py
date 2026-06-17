@@ -6,18 +6,13 @@ Run with: python app.py [--password <gm_password>]
 
 import subprocess
 import sys
-import warnings
-
-# Suppress deprecation warnings (e.g., eventlet deprecation)
-warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 # Dependency check - install missing packages before importing them
 REQUIRED = {
     'flask': 'flask',
     'flask_socketio': 'flask-socketio',
     'werkzeug': 'werkzeug',
-    'eventlet': 'eventlet',
-    'PIL': 'Pillow'
+    'eventlet': 'eventlet'
 }
 
 missing = []
@@ -51,7 +46,7 @@ def create_app(gm_password=None):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config['SECRET_KEY'] = secrets.token_hex(32)
-    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
     app.config['GM_PASSWORD'] = gm_password  # None means no auth required
     
     return app

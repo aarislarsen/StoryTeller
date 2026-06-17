@@ -1,6 +1,5 @@
 """Flask routes for StoryTeller"""
 
-import io
 import uuid
 import time
 import base64
@@ -10,131 +9,33 @@ from flask import render_template, request, jsonify, session, redirect, url_for,
 
 from data import app_data, save_data
 
-# Image auto-scaling caps (server-side backstop for oversized uploads)
-IMAGE_MAX_DIM = 1600       # longest side, px
-IMAGE_JPEG_QUALITY = 85
-# Warn when the data file grows past this (bytes)
-DATA_SIZE_WARN_BYTES = 15 * 1024 * 1024
-
-
-def _bytes_to_data_uri(content, mime_type):
-    """Base64-encode raw bytes into a data URI without re-encoding."""
-    return f"data:{mime_type};base64,{base64.b64encode(content).decode('utf-8')}"
-
-
-def scale_image_bytes(content, max_dim=IMAGE_MAX_DIM, quality=IMAGE_JPEG_QUALITY):
-    """Downscale + re-encode raster image bytes to a JPEG data URI.
-
-    Returns a data URI string, or None if the bytes aren't a decodable raster
-    image (caller should fall back to storing the original).
-    """
-    try:
-        from PIL import Image, ImageOps
-    except ImportError:
-        return None
-    try:
-        img = Image.open(io.BytesIO(content))
-        # Respect EXIF orientation before dropping metadata
-        img = ImageOps.exif_transpose(img)
-        # Only shrink, never upscale
-        img.thumbnail((max_dim, max_dim))
-        # Flatten alpha/palette onto white so JPEG is valid
-        if img.mode in ('RGBA', 'LA', 'P'):
-            img = img.convert('RGBA')
-            bg = Image.new('RGB', img.size, (255, 255, 255))
-            bg.paste(img, mask=img.split()[-1])
-            img = bg
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
-        out = io.BytesIO()
-        img.save(out, format='JPEG', quality=quality, optimize=True)
-        return _bytes_to_data_uri(out.getvalue(), 'image/jpeg')
-    except Exception:
-        return None
-
 
 def file_to_data_uri(file):
-    """Convert an uploaded file to a base64 data URI, auto-scaling large rasters."""
+    """Convert an uploaded file to a base64 data URI."""
     if not file or not file.filename:
         return None
-
+    
     # Read file content
     content = file.read()
-    if not content:
-        return None
-
+    
+    # Determine MIME type from filename
     filename = file.filename.lower()
-
-    # GIF (animation) and SVG (vector) are stored as-is, not rasterized.
-    if filename.endswith('.gif'):
-        return _bytes_to_data_uri(content, 'image/gif')
-    if filename.endswith('.svg'):
-        return _bytes_to_data_uri(content, 'image/svg+xml')
-
-    # Everything else: downscale + re-encode as JPEG (server-side backstop).
-    scaled = scale_image_bytes(content)
-    if scaled is not None:
-        return scaled
-
-    # Fallback: Pillow unavailable or undecodable -> store original bytes.
     if filename.endswith('.png'):
         mime_type = 'image/png'
+    elif filename.endswith('.gif'):
+        mime_type = 'image/gif'
     elif filename.endswith('.webp'):
         mime_type = 'image/webp'
+    elif filename.endswith('.svg'):
+        mime_type = 'image/svg+xml'
     else:
+        # Default to JPEG for jpg, jpeg, and unknown
         mime_type = 'image/jpeg'
-    return _bytes_to_data_uri(content, mime_type)
-
-
-def _data_uri_to_bytes(data_uri):
-    """Split a data URI into (mime_type, raw_bytes), or (None, None)."""
-    if not isinstance(data_uri, str) or not data_uri.startswith('data:'):
-        return None, None
-    try:
-        header, b64 = data_uri.split(',', 1)
-        mime_type = header[5:].split(';', 1)[0]
-        return mime_type, base64.b64decode(b64)
-    except Exception:
-        return None, None
-
-
-def optimize_stored_images(data):
-    """Walk app_data and downscale every oversized inline raster image in place.
-
-    Returns (scaled_count, bytes_saved). GIF/SVG are left untouched.
-    """
-    scaled_count = 0
-    bytes_saved = 0
-
-    def _process(holder):
-        nonlocal scaled_count, bytes_saved
-        img = holder.get('image')
-        mime, raw = _data_uri_to_bytes(img)
-        if raw is None:
-            return
-        if mime in ('image/gif', 'image/svg+xml'):
-            return
-        new_uri = scale_image_bytes(raw)
-        if new_uri and len(new_uri) < len(img):
-            bytes_saved += len(img) - len(new_uri)
-            holder['image'] = new_uri
-            scaled_count += 1
-
-    for storyline in data.get('storylines', {}).values():
-        for block in storyline.get('blocks', []):
-            _process(block)
-        for branch in storyline.get('branches', []):
-            for inject in branch.get('injects', []):
-                _process(inject)
-
-    for item in data.get('inject_library', []):
-        if item.get('type') == 'branch':
-            for inject in item.get('injects', []):
-                _process(inject)
-        else:
-            _process(item)
-
-    return scaled_count, bytes_saved
+    
+    # Encode to base64
+    b64_content = base64.b64encode(content).decode('utf-8')
+    
+    return f"data:{mime_type};base64,{b64_content}"
 
 
 # Login attempt tracking for exponential backoff
@@ -220,58 +121,7 @@ def require_gm(f):
 
 def register_routes(app):
     """Register all Flask routes."""
-
-    @app.after_request
-    def _no_store_api(response):
-        """Prevent the browser from serving stale cached API GET responses."""
-        if request.path.startswith('/api/') and request.method == 'GET':
-            response.headers['Cache-Control'] = 'no-store, max-age=0'
-        return response
-
-    @app.route('/api/data-status', methods=['GET'])
-    @require_gm
-    def data_status():
-        """Report data file size so the GM UI can warn about bloat."""
-        from config import DATA_FILE
-        try:
-            size = DATA_FILE.stat().st_size
-        except OSError:
-            size = 0
-        return jsonify({
-            'size_bytes': size,
-            'warn_bytes': DATA_SIZE_WARN_BYTES,
-            'over_threshold': size > DATA_SIZE_WARN_BYTES
-        })
-
-    @app.route('/api/optimize-images', methods=['POST'])
-    @require_gm
-    def optimize_images():
-        """Downscale all oversized stored images in place (one-shot, backed up)."""
-        from config import DATA_FILE
-        import shutil
-
-        size_before = DATA_FILE.stat().st_size if DATA_FILE.exists() else 0
-
-        # Scale in memory first; only back up + rewrite if something changed.
-        scaled_count, bytes_saved = optimize_stored_images(app_data)
-        backup_path = None
-        if scaled_count:
-            if DATA_FILE.exists():
-                backup_path = DATA_FILE.with_name(
-                    f"{DATA_FILE.stem}.bak-{time.strftime('%Y%m%d-%H%M%S')}{DATA_FILE.suffix}"
-                )
-                shutil.copy2(DATA_FILE, backup_path)
-            save_data(app_data)
-
-        size_after = DATA_FILE.stat().st_size if DATA_FILE.exists() else 0
-        return jsonify({
-            'success': True,
-            'scaled_images': scaled_count,
-            'size_before': size_before,
-            'size_after': size_after,
-            'backup': backup_path.name if backup_path else None
-        })
-
+    
     @app.route('/gm/login', methods=['GET', 'POST'])
     def gm_login():
         """GM login page."""
@@ -1339,13 +1189,6 @@ def register_routes(app):
         notes_file = DATA_DIR / 'session_notes.json'
         with open(notes_file, 'w') as f:
             json.dump(data, f, indent=2)
-
-    def _emit_gm(event, data=None):
-        """Emit a Socket.IO event to the GM room."""
-        from socket_handlers import get_socketio
-        socketio = get_socketio()
-        if socketio is not None:
-            socketio.emit(event, data, room='gm')
     
     @app.route('/api/session-notes', methods=['GET'])
     @require_gm
@@ -1382,9 +1225,8 @@ def register_routes(app):
         data['notes'].insert(0, note)
         
         save_session_notes(data)
-        _emit_gm('session_notes_updated', {'notes': data['notes']})
         return jsonify({'success': True, 'notes': data['notes']})
-
+    
     @app.route('/api/session-notes/<int:index>', methods=['DELETE'])
     @require_gm
     def delete_session_note(index):
@@ -1394,9 +1236,8 @@ def register_routes(app):
         if 0 <= index < len(data['notes']):
             data['notes'].pop(index)
             save_session_notes(data)
-            _emit_gm('session_notes_updated', {'notes': data['notes']})
             return jsonify({'success': True, 'notes': data['notes']})
-
+        
         return jsonify({'error': 'Note not found'}), 404
 
     @app.route('/api/session-notes/clear', methods=['POST'])
@@ -1404,5 +1245,4 @@ def register_routes(app):
     def clear_session_notes():
         """Clear all session notes."""
         save_session_notes({'notes': []})
-        _emit_gm('session_notes_updated', {'notes': []})
         return jsonify({'success': True})
