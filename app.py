@@ -16,7 +16,8 @@ REQUIRED = {
     'flask': 'flask',
     'flask_socketio': 'flask-socketio',
     'werkzeug': 'werkzeug',
-    'eventlet': 'eventlet'
+    'eventlet': 'eventlet',
+    'PIL': 'Pillow'
 }
 
 missing = []
