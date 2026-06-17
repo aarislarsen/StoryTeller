@@ -2574,3 +2574,47 @@ body.light-mode .player-type-name {
 body.light-mode .player-types-empty {
     color: #6a6a7a;
 }
+
+/* ============ Data size warning banner ============ */
+.data-warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 16px 0;
+    padding: 10px 14px;
+    background: #3a2e0a;
+    border: 1px solid #c9961f;
+    border-left: 4px solid #f0b429;
+    border-radius: 8px;
+    color: #f5e6b8;
+    font-size: 0.9rem;
+}
+
+.data-warning-banner .data-warning-icon {
+    font-size: 1.1rem;
+}
+
+.data-warning-banner #dataWarningText {
+    flex: 1;
+}
+
+.data-warning-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 2px 6px;
+}
+
+.data-warning-close:hover {
+    opacity: 1;
+}
+
+body.light-mode .data-warning-banner {
+    background: #fff7e0;
+    border-color: #e0a82e;
+    border-left-color: #d98e04;
+    color: #7a5c00;
+}
