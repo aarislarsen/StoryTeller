@@ -3,7 +3,6 @@
 import uuid
 import time
 import base64
-from pathlib import Path
 from functools import wraps
 from flask import render_template, request, jsonify, session, redirect, url_for, current_app
 
@@ -119,9 +118,20 @@ def require_gm(f):
     return decorated_function
 
 
-def register_routes(app):
-    """Register all Flask routes."""
-    
+def register_routes(app, socketio=None):
+    """Register all Flask routes.
+
+    socketio: optional Flask-SocketIO instance. When provided, mutating routes
+    broadcast a change event to the 'gm' room so every connected game master's
+    browser updates live without a manual refresh.
+    """
+
+    def notify(event, payload=None):
+        """Broadcast a change event to all connected game masters."""
+        if socketio is not None:
+            socketio.emit(event, payload or {}, room='gm')
+
+
     @app.route('/gm/login', methods=['GET', 'POST'])
     def gm_login():
         """GM login page."""
@@ -221,6 +231,7 @@ def register_routes(app):
         }
         app_data['active_storyline'] = storyline_id
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify({'id': storyline_id})
 
     @app.route('/api/storylines/import', methods=['POST'])
@@ -283,7 +294,10 @@ def register_routes(app):
                 imported_library_items += 1
         
         save_data(app_data)
-        
+        notify('storyline_changed')
+        notify('library_changed')
+        notify('player_types_changed')
+
         return jsonify({
             'success': True,
             'imported_storylines': imported_storylines,
@@ -310,7 +324,7 @@ def register_routes(app):
         
         app_data['current_block'] = 0
         save_data(app_data)
-        # Note: broadcast_current_block() called from socket_handlers
+        notify('storyline_changed')
         return jsonify({'success': True})
 
     @app.route('/api/storylines/<storyline_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -330,14 +344,16 @@ def register_routes(app):
             if storyline_id in app_data['storylines']:
                 app_data['storylines'][storyline_id]['name'] = data['name']
                 save_data(app_data)
+                notify('storyline_changed')
             return jsonify({'success': True})
-        
+
         elif request.method == 'DELETE':
             if storyline_id in app_data['storylines']:
                 del app_data['storylines'][storyline_id]
                 if app_data['active_storyline'] == storyline_id:
                     app_data['active_storyline'] = None
                 save_data(app_data)
+                notify('storyline_changed')
             return jsonify({'success': True})
 
     # ============ API: Injects (Blocks) ============
@@ -395,6 +411,7 @@ def register_routes(app):
         
         app_data['storylines'][storyline_id]['blocks'].append(block)
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify(block)
 
     @app.route('/api/blocks/<storyline_id>/<block_id>', methods=['GET', 'POST', 'DELETE'])
@@ -449,10 +466,11 @@ def register_routes(app):
             elif not request.form.get('existing_image'):
                 # Remove image if cleared
                 block['image'] = None
-            
+
             save_data(app_data)
+            notify('storyline_changed')
             return jsonify(block)
-        
+
         elif request.method == 'DELETE':
             blocks.pop(block_idx)
             
@@ -460,8 +478,9 @@ def register_routes(app):
             current = app_data['storylines'][storyline_id].get('current_block', 0)
             if current >= len(blocks):
                 app_data['storylines'][storyline_id]['current_block'] = max(0, len(blocks) - 1)
-            
+
             save_data(app_data)
+            notify('storyline_changed')
             return jsonify({'success': True})
 
     @app.route('/api/blocks/reorder', methods=['POST'])
@@ -480,6 +499,7 @@ def register_routes(app):
             block_map[bid] for bid in order if bid in block_map
         ]
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify({'success': True})
 
     # ============ API: Branches ============
@@ -531,6 +551,7 @@ def register_routes(app):
         
         storyline['branches'].append(branch)
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify(branch)
 
     @app.route('/api/branches/<storyline_id>/<branch_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -575,55 +596,22 @@ def register_routes(app):
             if 'merge_to_inject_id' in data:
                 branch['merge_to_inject_id'] = data['merge_to_inject_id']
             save_data(app_data)
+            notify('storyline_changed')
             return jsonify(branch)
-        
+
         elif request.method == 'DELETE':
             # Remove from active branches if present
             if branch_id in storyline.get('active_branches', []):
                 storyline['active_branches'].remove(branch_id)
-            
+
             branches.pop(branch_idx)
             save_data(app_data)
+            notify('storyline_changed')
             return jsonify({'success': True})
 
-    @app.route('/api/branches/<storyline_id>/<branch_id>/activate', methods=['POST'])
-    @require_gm
-    def activate_branch(storyline_id, branch_id):
-        """Manually activate a branch."""
-        if storyline_id not in app_data['storylines']:
-            return jsonify({'error': 'Storyline not found'}), 404
-        
-        storyline = app_data['storylines'][storyline_id]
-        branches = storyline.get('branches', [])
-        branch = next((b for b in branches if b['id'] == branch_id), None)
-        
-        if not branch:
-            return jsonify({'error': 'Branch not found'}), 404
-        
-        if 'active_branches' not in storyline:
-            storyline['active_branches'] = []
-        
-        if branch_id not in storyline['active_branches']:
-            storyline['active_branches'].append(branch_id)
-            branch['current_inject'] = 0
-        
-        save_data(app_data)
-        return jsonify({'success': True})
-
-    @app.route('/api/branches/<storyline_id>/<branch_id>/deactivate', methods=['POST'])
-    @require_gm
-    def deactivate_branch(storyline_id, branch_id):
-        """Deactivate a branch."""
-        if storyline_id not in app_data['storylines']:
-            return jsonify({'error': 'Storyline not found'}), 404
-        
-        storyline = app_data['storylines'][storyline_id]
-        
-        if branch_id in storyline.get('active_branches', []):
-            storyline['active_branches'].remove(branch_id)
-        
-        save_data(app_data)
-        return jsonify({'success': True})
+    # Note: branch activate/deactivate are handled live over Socket.IO
+    # ('activate_branch'/'deactivate_branch' events in socket_handlers.py),
+    # so there are no HTTP routes for them.
 
     # ============ API: Branch Injects ============
     
@@ -684,6 +672,7 @@ def register_routes(app):
         
         branch['injects'].append(inject)
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify(inject)
 
     @app.route('/api/branches/<storyline_id>/<branch_id>/injects/<inject_id>', methods=['GET', 'POST', 'DELETE'])
@@ -742,17 +731,19 @@ def register_routes(app):
                     inject['image'] = file_to_data_uri(file)
             elif not request.form.get('existing_image'):
                 inject['image'] = None
-            
+
             save_data(app_data)
+            notify('storyline_changed')
             return jsonify(inject)
-        
+
         elif request.method == 'DELETE':
             injects.pop(inject_idx)
-            
+
             if branch['current_inject'] >= len(injects):
                 branch['current_inject'] = max(0, len(injects) - 1)
-            
+
             save_data(app_data)
+            notify('storyline_changed')
             return jsonify({'success': True})
 
     @app.route('/api/branches/<storyline_id>/<branch_id>/reorder', methods=['POST'])
@@ -774,8 +765,9 @@ def register_routes(app):
         injects = branch.get('injects', [])
         inject_map = {inj['id']: inj for inj in injects}
         branch['injects'] = [inject_map[iid] for iid in order if iid in inject_map]
-        
+
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify({'success': True})
 
     # ============ API: Player Types ============
@@ -803,6 +795,7 @@ def register_routes(app):
             
             app_data['player_types'].append(name)
             save_data(app_data)
+            notify('player_types_changed')
             return jsonify({'success': True, 'player_types': app_data['player_types']})
     
     @app.route('/api/player-types/<path:name>', methods=['DELETE'])
@@ -833,7 +826,10 @@ def register_routes(app):
                             inject['target_player_types'].remove(name)
             
             save_data(app_data)
-        
+            notify('player_types_changed')
+            # Injects' target_player_types were cleaned up too.
+            notify('storyline_changed')
+
         return jsonify({'success': True, 'player_types': app_data['player_types']})
     
     @app.route('/api/player-links', methods=['GET', 'POST'])
@@ -866,6 +862,7 @@ def register_routes(app):
                     app_data['player_links'][pt] = secrets.token_hex(8)
             
             save_data(app_data)
+            notify('player_types_changed')
             return jsonify({
                 'success': True,
                 'player_links': app_data['player_links'],
@@ -936,6 +933,7 @@ def register_routes(app):
         
         app_data['inject_library'].append(library_inject)
         save_data(app_data)
+        notify('library_changed')
         return jsonify(library_inject)
     
     @app.route('/api/library/<inject_id>', methods=['GET', 'POST', 'DELETE'])
@@ -978,11 +976,13 @@ def register_routes(app):
                     inject['image'] = file_to_data_uri(file)
             
             save_data(app_data)
+            notify('library_changed')
             return jsonify(inject)
-        
+
         elif request.method == 'DELETE':
             del app_data['inject_library'][inject_idx]
             save_data(app_data)
+            notify('library_changed')
             return jsonify({'success': True})
     
     @app.route('/api/library/<inject_id>/add-to-storyline', methods=['POST'])
@@ -1019,8 +1019,9 @@ def register_routes(app):
             blocks.insert(position, new_inject)
         else:
             blocks.append(new_inject)
-        
+
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify(new_inject)
     
     @app.route('/api/library/<inject_id>/add-to-branch', methods=['POST'])
@@ -1066,8 +1067,9 @@ def register_routes(app):
             branch['injects'].insert(position, new_inject)
         else:
             branch['injects'].append(new_inject)
-        
+
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify(new_inject)
     
     @app.route('/api/branches/<storyline_id>/<branch_id>/save-to-library', methods=['POST'])
@@ -1111,6 +1113,7 @@ def register_routes(app):
         
         app_data['inject_library'].append(library_branch)
         save_data(app_data)
+        notify('library_changed')
         return jsonify({'success': True, 'saved_count': len(library_injects)})
     
     @app.route('/api/library/<library_id>/add-branch-to-storyline', methods=['POST'])
@@ -1163,9 +1166,30 @@ def register_routes(app):
         if 'branches' not in storyline:
             storyline['branches'] = []
         storyline['branches'].append(new_branch)
-        
+
         save_data(app_data)
+        notify('storyline_changed')
         return jsonify(new_branch)
+
+    @app.route('/api/library/reorder', methods=['POST'])
+    @require_gm
+    def reorder_library():
+        """Persist a new order for inject library items."""
+        data = request.get_json() or {}
+        order = data.get('order', [])
+
+        library = app_data.get('inject_library', [])
+        item_map = {item['id']: item for item in library}
+        reordered = [item_map[i] for i in order if i in item_map]
+        # Keep any items not present in the supplied order (safety).
+        for item in library:
+            if item['id'] not in order:
+                reordered.append(item)
+        app_data['inject_library'] = reordered
+
+        save_data(app_data)
+        notify('library_changed')
+        return jsonify({'success': True})
 
     # ============ API: Session Notes ============
     
@@ -1223,8 +1247,9 @@ def register_routes(app):
         
         # Add to beginning of list (newest first)
         data['notes'].insert(0, note)
-        
+
         save_session_notes(data)
+        notify('session_notes_updated', {'notes': data['notes']})
         return jsonify({'success': True, 'notes': data['notes']})
     
     @app.route('/api/session-notes/<int:index>', methods=['DELETE'])
@@ -1236,8 +1261,9 @@ def register_routes(app):
         if 0 <= index < len(data['notes']):
             data['notes'].pop(index)
             save_session_notes(data)
+            notify('session_notes_updated', {'notes': data['notes']})
             return jsonify({'success': True, 'notes': data['notes']})
-        
+
         return jsonify({'error': 'Note not found'}), 404
 
     @app.route('/api/session-notes/clear', methods=['POST'])
@@ -1245,4 +1271,5 @@ def register_routes(app):
     def clear_session_notes():
         """Clear all session notes."""
         save_session_notes({'notes': []})
+        notify('session_notes_updated', {'notes': []})
         return jsonify({'success': True})

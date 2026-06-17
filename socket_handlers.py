@@ -17,6 +17,61 @@ last_shown_inject = {}
 # Global reference to socketio
 _socketio = None
 
+# ---- Collaborative editing presence ----
+# Friendly label per connected GM socket: sid -> "GM 1"
+gm_labels = {}
+_gm_counter = [0]
+# Who is editing what: entity_key ("type:id") -> { sid: label }
+editing_locks = {}
+
+
+def _editing_status_payload(entity_key):
+    """Build the editing_status payload for a given entity key."""
+    entity_type, _, entity_id = entity_key.partition(':')
+    return {
+        'entity_type': entity_type,
+        'entity_id': entity_id,
+        'editors': list(editing_locks.get(entity_key, {}).values())
+    }
+
+
+def broadcast_editing_status(entity_key):
+    """Tell every GM who is currently editing the given entity."""
+    if _socketio is None:
+        return
+    _socketio.emit('editing_status', _editing_status_payload(entity_key), room='gm')
+
+
+# ---- Deferred persistence ----
+# Writing the (image-heavy) data file is slow. On the playback/navigation hot
+# path we don't want that write to block the broadcast, so we persist in a
+# background task and coalesce rapid successive calls into a single write.
+_save_pending = [False]
+_save_running = [False]
+
+
+def _run_saves():
+    while _save_pending[0]:
+        _save_pending[0] = False
+        save_data(app_data)
+    _save_running[0] = False
+
+
+def schedule_save():
+    """Persist app_data without blocking the caller. Coalesces bursts of calls
+    (e.g. advance + auto-trigger) into one background write so the UI updates
+    immediately."""
+    _save_pending[0] = True
+    if _save_running[0]:
+        return
+    if _socketio is None:
+        # No event loop yet; fall back to a synchronous write.
+        _save_pending[0] = False
+        save_data(app_data)
+        return
+    _save_running[0] = True
+    _socketio.start_background_task(_run_saves)
+
 
 def get_storyline():
     """Get the active storyline or None."""
@@ -167,10 +222,12 @@ def broadcast_current_block():
     # Send full data to GM (room='gm')
     gm_data = {
         'block': current_inject,
-        'all_blocks': blocks,
+        # GM rebuilds structure via /api/storylines on demand; don't ship the
+        # whole (image-heavy) storyline on every advance.
+        'all_blocks': [],
         'current_index': main_idx,
         'total_blocks': len(blocks),
-        'branches': branches,
+        'branches': [],
         'active_branches': active_branches,
         'current_source': source_type,
         'source_name': source_name,
@@ -260,10 +317,12 @@ def broadcast_state_to_gm_only():
     # Send to GM only
     gm_data = {
         'block': current_inject,
-        'all_blocks': blocks,
+        # GM rebuilds structure via /api/storylines on demand; don't ship the
+        # whole (image-heavy) storyline on every advance.
+        'all_blocks': [],
         'current_index': main_idx,
         'total_blocks': len(blocks),
-        'branches': branches,
+        'branches': [],
         'active_branches': active_branches,
         'current_source': source_type,
         'source_name': source_name,
@@ -369,7 +428,7 @@ def check_auto_trigger_branches():
             branch['current_inject'] = 0
     
     storyline['active_branches'] = active_branches
-    save_data(app_data)
+    schedule_save()
 
 
 def advance_to_next():
@@ -417,7 +476,7 @@ def advance_to_next():
             if current < len(branch.get('injects', [])) - 1:
                 # More injects in this branch
                 branch['current_inject'] = current + 1
-                save_data(app_data)
+                schedule_save()
                 broadcast_current_block()
                 return True
             else:
@@ -433,12 +492,12 @@ def advance_to_next():
                     if merge_idx is not None:
                         storyline['current_block'] = merge_idx
                         playback['current_source'] = 'main'
-                        save_data(app_data)
+                        schedule_save()
                         check_auto_trigger_branches()
                         broadcast_current_block()
                         return True
                 
-                save_data(app_data)
+                schedule_save()
                 
                 # Check if another branch is waiting for the current main inject
                 current_block_id = blocks[current_main_idx]['id'] if blocks and current_main_idx < len(blocks) else None
@@ -476,7 +535,7 @@ def advance_main():
     if current < len(blocks) - 1:
         storyline['current_block'] = current + 1
         playback['current_source'] = 'main'
-        save_data(app_data)
+        schedule_save()
         check_auto_trigger_branches()
         broadcast_current_block()
         return True
@@ -506,14 +565,67 @@ def register_socket_handlers(socketio, app=None):
     def handle_gm_connected():
         """GM client identifies itself and joins the GM room."""
         from flask_socketio import join_room, emit
-        
+
         # Verify GM is authenticated
         if not is_gm_authenticated():
             emit('auth_error', {'error': 'Not authenticated as GM'})
             return
-        
+
         join_room('gm')
+
+        # Assign a stable friendly label for this connection so other GMs can
+        # see "GM 2 is also editing this".
+        sid = request.sid
+        if sid not in gm_labels:
+            _gm_counter[0] += 1
+            gm_labels[sid] = f'GM {_gm_counter[0]}'
+        emit('gm_identity', {'label': gm_labels[sid]})
+
+        # Send the current editing locks so a freshly-opened GM sees existing
+        # edit-in-progress state right away.
+        for entity_key in editing_locks:
+            emit('editing_status', _editing_status_payload(entity_key))
+
         broadcast_current_block()
+
+    @socketio.on('start_editing')
+    def handle_start_editing(data):
+        """A GM opened an edit modal for an existing entity."""
+        if not is_gm_authenticated():
+            return
+        if not data or not data.get('entity_id'):
+            return
+        entity_key = f"{data.get('entity_type')}:{data.get('entity_id')}"
+        editing_locks.setdefault(entity_key, {})[request.sid] = gm_labels.get(request.sid, 'A GM')
+        broadcast_editing_status(entity_key)
+
+    @socketio.on('stop_editing')
+    def handle_stop_editing(data):
+        """A GM closed an edit modal."""
+        if not data or not data.get('entity_id'):
+            return
+        entity_key = f"{data.get('entity_type')}:{data.get('entity_id')}"
+        editors = editing_locks.get(entity_key)
+        if editors and request.sid in editors:
+            del editors[request.sid]
+            if not editors:
+                del editing_locks[entity_key]
+            broadcast_editing_status(entity_key)
+
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """Clean up any editing locks held by a departing GM."""
+        sid = request.sid
+        affected = []
+        for entity_key, editors in list(editing_locks.items()):
+            if sid in editors:
+                del editors[sid]
+                affected.append(entity_key)
+                if not editors:
+                    del editing_locks[entity_key]
+        gm_labels.pop(sid, None)
+        for entity_key in affected:
+            broadcast_editing_status(entity_key)
     
     @socketio.on('player_connected')
     def handle_player_connected(data=None):
@@ -551,7 +663,7 @@ def register_socket_handlers(socketio, app=None):
             if current > 0:
                 storyline['current_block'] = current - 1
                 playback['current_source'] = 'main'
-                save_data(app_data)
+                schedule_save()
         broadcast_current_block()
         if playback['playing']:
             start_inject_timer()
@@ -574,7 +686,7 @@ def register_socket_handlers(socketio, app=None):
                     for branch in storyline.get('branches', []):
                         branch['current_inject'] = 0
                 
-                save_data(app_data)
+                schedule_save()
                 check_auto_trigger_branches()
         broadcast_current_block()
         if playback['playing']:
@@ -607,7 +719,7 @@ def register_socket_handlers(socketio, app=None):
                     # Switch playback to this branch
                     playback['current_source'] = branch_id
                     
-                    save_data(app_data)
+                    schedule_save()
         broadcast_current_block()
         if playback['playing']:
             start_inject_timer()
@@ -644,7 +756,7 @@ def register_socket_handlers(socketio, app=None):
                     # Just activate the branch - it will play when its parent inject is reached
                     storyline['active_branches'].append(branch_id)
                     branch['current_inject'] = 0
-                    save_data(app_data)
+                    schedule_save()
         # Only notify GM, not players - branch activation is a GM-only state change
         broadcast_state_to_gm_only()
     
@@ -659,7 +771,7 @@ def register_socket_handlers(socketio, app=None):
                 storyline['active_branches'].remove(branch_id)
                 # Don't change playback source - stay on current branch inject
                 # Next action will handle returning to main storyline
-                save_data(app_data)
+                schedule_save()
                 # Only notify GM - players keep seeing the same inject
                 broadcast_state_to_gm_only()
 

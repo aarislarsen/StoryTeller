@@ -31,6 +31,7 @@ if missing:
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 import argparse
+import re
 import signal
 import secrets
 
@@ -38,9 +39,52 @@ from flask import Flask
 from flask_socketio import SocketIO
 
 from config import DATA_DIR
-from data import load_data, save_data, app_data
 from routes import register_routes
 from socket_handlers import register_socket_handlers
+
+
+# Control chars (excluding tab/newline/carriage-return) signal a non-HTTP probe,
+# e.g. an HTTPS/TLS handshake hitting our plaintext port.
+_CTRL_CHARS = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+
+
+def _is_console_noise(line):
+    """True for the 'Bad request' spam produced when junk/TLS hits the HTTP port."""
+    if 'Bad request' in line or 'code 400, message' in line:
+        return True
+    # The follow-up line echoes the raw (binary) request line verbatim.
+    return bool(_CTRL_CHARS.search(line))
+
+
+class _FilteredStderr:
+    """Line-buffering stderr wrapper that drops malformed-request noise while
+    passing every other message through untouched. Installed once at startup so
+    it catches output whether it arrives via the logging module or a direct
+    stderr write."""
+
+    def __init__(self, real):
+        self._real = real
+        self._buf = ''
+
+    def write(self, text):
+        self._buf += text
+        while '\n' in self._buf:
+            line, self._buf = self._buf.split('\n', 1)
+            if not _is_console_noise(line):
+                self._real.write(line + '\n')
+        return len(text)
+
+    def flush(self):
+        self._real.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+def install_console_filter():
+    """Silence 'Bad request' / TLS-probe log spam on the console."""
+    if not isinstance(sys.stderr, _FilteredStderr):
+        sys.stderr = _FilteredStderr(sys.stderr)
 
 def create_app(gm_password=None):
     """Create and configure the Flask application."""
@@ -63,12 +107,15 @@ if __name__ == '__main__':
                         help='GM password for authentication (optional)')
     args = parser.parse_args()
     
+    # Keep the console clean: drop TLS/garbage-probe "Bad request" spam.
+    install_console_filter()
+
     # Create app with password config
     app = create_app(gm_password=args.password)
     socketio = SocketIO(app, cors_allowed_origins="*")
     
     # Register routes and socket handlers
-    register_routes(app)
+    register_routes(app, socketio)
     register_socket_handlers(socketio, app)
     
     # Register signal handler for clean exit

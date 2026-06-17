@@ -31,6 +31,7 @@ function showAlert(message, title = 'Notice') {
 
 function closeAlertModal() {
     document.getElementById('alertModal').classList.remove('active');
+    flushPendingRefresh();
 }
 
 function showConfirm(message, title = 'Confirm') {
@@ -48,6 +49,7 @@ function closeConfirmModal(result) {
         confirmCallback(result);
         confirmCallback = null;
     }
+    flushPendingRefresh();
 }
 
 // ============ State ============
@@ -78,7 +80,6 @@ socket.on('connect', () => {
     loadStorylines();
     loadPlayerTypesData(); // Load player types for inject forms
     loadLibrary(); // Load inject library
-    refreshDataStatus(); // Warn if the data file is bloated by large images
 });
 
 socket.on('disconnect', () => {
@@ -99,26 +100,58 @@ socket.on('block_update', (data) => {
 });
 
 let shouldScrollToNowPlaying = false;
+let lastActiveBranchesKey = null;
 
 socket.on('state_update', (data) => {
     if (data.current_block !== undefined) {
         document.getElementById('currentBlock').textContent = data.current_block + 1;
     }
-    
+
     // Track what's currently being displayed to players
     currentDisplaySource = data.current_source || 'main';
     currentDisplayBranchId = data.current_branch_id || null;
     currentDisplayBranchInjectIdx = data.current_branch_inject_idx;
-    
-    // Refresh to update branch active states
-    if (data.active_branches !== undefined && currentStoryline) {
-        renderStoryline(currentStoryline).then(() => {
-            // Only scroll if GM requested it
+
+    // Keep the cached storyline position in sync so highlighting and other
+    // features stay correct without re-fetching the whole storyline.
+    if (currentStoryline && storylinesData[currentStoryline]) {
+        if (data.current_block !== undefined) {
+            storylinesData[currentStoryline].current_block = data.current_block;
+        }
+        if (data.active_branches !== undefined) {
+            storylinesData[currentStoryline].active_branches = data.active_branches;
+        }
+    }
+
+    // Playback state only applies to the active storyline. If the GM is viewing
+    // a different storyline, there's nothing in view to re-highlight.
+    if (data.active_branches !== undefined && currentStoryline &&
+        currentStoryline === activeStoryline) {
+        const scrollIfRequested = () => {
             if (shouldScrollToNowPlaying) {
                 shouldScrollToNowPlaying = false;
                 scrollToNowPlaying();
             }
-        });
+        };
+
+        // Only a change to *which* branches are active affects structure
+        // (Start/Stop buttons, Playing badges). A plain advance does not, so we
+        // skip the costly fetch + full DOM rebuild and just move the highlight.
+        const branchesKey = JSON.stringify(data.active_branches);
+        const branchesChanged = branchesKey !== lastActiveBranchesKey;
+        lastActiveBranchesKey = branchesKey;
+
+        if (branchesChanged) {
+            renderStoryline(currentStoryline).then(scrollIfRequested);
+        } else {
+            highlightCurrentlyDisplayed(
+                data.current_block || 0,
+                currentDisplaySource,
+                currentDisplayBranchId,
+                currentDisplayBranchInjectIdx
+            );
+            scrollIfRequested();
+        }
     }
 });
 
@@ -133,6 +166,118 @@ socket.on('session_notes_updated', (data) => {
     sessionNotes = data.notes || [];
     renderSessionNotes();
 });
+
+// ============ Live Multi-GM Sync ============
+// Another GM changed something. Refresh the affected view so we don't need a
+// manual reload. If a modal is open we defer the refresh until it closes so we
+// don't yank the rug out from under an in-progress edit.
+let pendingRefresh = { storyline: false, library: false, playerTypes: false };
+
+function isAnyModalOpen() {
+    return !!document.querySelector('.modal-overlay.active');
+}
+
+function doRefresh(scope) {
+    if (scope === 'storyline') {
+        loadStorylines();
+        if (currentStoryline) renderStoryline(currentStoryline);
+    } else if (scope === 'library') {
+        loadLibrary();
+    } else if (scope === 'playerTypes') {
+        loadPlayerTypesData();
+        // Refresh the management lists only if those modals are open.
+        if (document.getElementById('playerTypesModal')?.classList.contains('active')) {
+            loadPlayerTypes();
+        }
+        if (document.getElementById('playerLinksModal')?.classList.contains('active')) {
+            fetch('/api/player-links')
+                .then(r => r.json())
+                .then(data => {
+                    playerLinks = data.player_links || {};
+                    playerTypes = data.player_types || [];
+                    genericPlayerLink = data.generic_player_link || null;
+                    renderPlayerLinksList();
+                });
+        }
+    }
+}
+
+function handleRemoteChange(scope) {
+    if (isAnyModalOpen()) {
+        pendingRefresh[scope] = true;
+        return;
+    }
+    doRefresh(scope);
+}
+
+function flushPendingRefresh() {
+    if (isAnyModalOpen()) return;
+    Object.keys(pendingRefresh).forEach(scope => {
+        if (pendingRefresh[scope]) {
+            pendingRefresh[scope] = false;
+            doRefresh(scope);
+        }
+    });
+}
+
+socket.on('storyline_changed', () => handleRemoteChange('storyline'));
+socket.on('library_changed', () => handleRemoteChange('library'));
+socket.on('player_types_changed', () => handleRemoteChange('playerTypes'));
+
+// ============ Collaborative Editing Presence ============
+// Warn a GM when another GM has the same item's editor open, so they know a
+// save may overwrite the other person's changes.
+let myGmLabel = null;
+let currentEditingLock = null; // { entity_type, entity_id }
+
+socket.on('gm_identity', (data) => {
+    myGmLabel = data.label;
+});
+
+socket.on('editing_status', (data) => {
+    if (!currentEditingLock) return;
+    if (data.entity_type === currentEditingLock.entity_type &&
+        String(data.entity_id) === String(currentEditingLock.entity_id)) {
+        const others = (data.editors || []).filter(label => label !== myGmLabel);
+        showEditingConflict(others);
+    }
+});
+
+function startEditingLock(entityType, entityId) {
+    // Only existing entities can be co-edited (and thus overwritten).
+    if (!entityId) {
+        currentEditingLock = null;
+        showEditingConflict([]);
+        return;
+    }
+    currentEditingLock = { entity_type: entityType, entity_id: String(entityId) };
+    showEditingConflict([]); // reset banner; server will report current editors
+    socket.emit('start_editing', currentEditingLock);
+}
+
+function stopEditingLock() {
+    if (currentEditingLock) {
+        socket.emit('stop_editing', currentEditingLock);
+        currentEditingLock = null;
+    }
+    showEditingConflict([]);
+    flushPendingRefresh();
+}
+
+function showEditingConflict(others) {
+    const banners = document.querySelectorAll('.editing-conflict-banner');
+    banners.forEach(banner => {
+        if (others && others.length > 0) {
+            const who = others.length === 1
+                ? `${others[0]} is`
+                : `${others.join(', ')} are`;
+            banner.textContent = `⚠️ ${who} also editing this. Saving will overwrite their changes.`;
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+        }
+    });
+}
 
 // ============ Connection Status ============
 function setConnectionStatus(connected) {
@@ -234,65 +379,6 @@ function loadStorylines() {
                 console.error('Error loading storylines:', err);
             }
         });
-}
-
-// ============ Data Size Guard (image bloat) ============
-let _dataWarningDismissed = false;
-
-function _fmtMB(bytes) {
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-function refreshDataStatus() {
-    fetch('/api/data-status')
-        .then(r => r.ok ? r.json() : null)
-        .then(s => {
-            const banner = document.getElementById('dataWarningBanner');
-            if (!s || !banner) return;
-            if (s.over_threshold && !_dataWarningDismissed) {
-                document.getElementById('dataWarningText').textContent =
-                    `Storyline data is large (${_fmtMB(s.size_bytes)}). Big images slow saving and loading.`;
-                banner.style.display = 'flex';
-            } else {
-                banner.style.display = 'none';
-            }
-        })
-        .catch(() => {});
-}
-
-function dismissDataWarning() {
-    _dataWarningDismissed = true;
-    const banner = document.getElementById('dataWarningBanner');
-    if (banner) banner.style.display = 'none';
-}
-
-async function optimizeImages() {
-    const btn = document.getElementById('optimizeImagesBtn');
-    const txt = document.getElementById('dataWarningText');
-    if (btn) btn.disabled = true;
-    if (txt) txt.textContent = 'Optimizing images… this may take a moment.';
-    try {
-        const res = await fetch('/api/optimize-images', { method: 'POST' });
-        const data = await res.json();
-        if (data && data.success) {
-            showAlert(
-                `Scaled ${data.scaled_images} image(s). ` +
-                `Data file: ${_fmtMB(data.size_before)} → ${_fmtMB(data.size_after)}.` +
-                (data.backup ? `\nBackup saved: ${data.backup}` : ''),
-                'Images Optimized'
-            );
-            if (currentStoryline) await renderStoryline(currentStoryline);
-        } else {
-            showAlert('Image optimization did not complete.', 'Error');
-        }
-    } catch (e) {
-        console.error('optimizeImages failed:', e);
-        showAlert('Image optimization failed. See console.', 'Error');
-    } finally {
-        if (btn) btn.disabled = false;
-        _dataWarningDismissed = false;
-        refreshDataStatus();
-    }
 }
 
 function populateStorylineSelect(data) {
@@ -849,7 +935,58 @@ function updateScrollbarVisibility() {
 }
 
 function highlightCurrentlyDisplayed(mainIdx, source, branchId, branchInjectIdx) {
-    // This function no longer scrolls - scrolling is handled separately by GM actions
+    // Move the "now playing" red border + ▶ NOW badge and the current-position
+    // markers purely via DOM class toggles — no fetch, no innerHTML rebuild.
+    // Structure (cards, branches) is assumed already rendered.
+
+    // Clear previous dynamic markers everywhere.
+    document.querySelectorAll('.block-card.now-playing').forEach(c => c.classList.remove('now-playing'));
+    document.querySelectorAll('.now-playing-badge').forEach(b => b.remove());
+    document.querySelectorAll('.block-card.active').forEach(c => c.classList.remove('active'));
+
+    // Main pointer: the main block at mainIdx is always the current main inject.
+    const mainRow = document.querySelector('.main-storyline-row');
+    const mainCard = mainRow
+        ? mainRow.querySelector(`.block-card[data-index="${mainIdx}"]`)
+        : null;
+    if (mainCard) mainCard.classList.add('active');
+
+    // Re-apply each active branch's current-inject marker.
+    const storyline = storylinesData[currentStoryline] || {};
+    const activeBranchIds = storyline.active_branches || [];
+    (storyline.branches || []).forEach(branch => {
+        if (!activeBranchIds.includes(branch.id)) return;
+        const group = document.querySelector(`.branch-group[data-branch-id="${branch.id}"]`);
+        if (!group) return;
+        // Fresh index for the branch currently playing; cached value otherwise.
+        const idx = (source === 'branch' && branch.id === branchId)
+            ? branchInjectIdx
+            : (branch.current_inject || 0);
+        const card = group.querySelector(`.block-card[data-index="${idx}"]`);
+        if (card) card.classList.add('active');
+    });
+
+    // Determine the single "now playing" target card.
+    let target = mainCard;
+    if (source === 'branch' && branchId != null) {
+        const group = document.querySelector(`.branch-group[data-branch-id="${branchId}"]`);
+        target = group
+            ? group.querySelector(`.block-card[data-index="${branchInjectIdx}"]`)
+            : null;
+    }
+
+    if (target) {
+        target.classList.add('now-playing');
+        const header = target.querySelector('.block-header');
+        if (header) {
+            const badge = document.createElement('span');
+            badge.className = 'now-playing-badge';
+            badge.textContent = '▶ NOW';
+            const actions = header.querySelector('.block-actions');
+            if (actions) header.insertBefore(badge, actions);
+            else header.appendChild(badge);
+        }
+    }
 }
 
 function scrollToNowPlaying() {
@@ -910,7 +1047,8 @@ function openBlockModal(data = null) {
     populatePlayerTypesCheckboxes('blockPlayerTypes', data?.target_player_types || []);
     
     document.getElementById('blockModal').classList.add('active');
-    
+    startEditingLock('inject', data?.id);
+
     // Focus heading field after modal is visible
     setTimeout(() => {
         document.getElementById('blockHeading').focus();
@@ -946,6 +1084,7 @@ function closeBlockModal() {
     document.getElementById('blockModal').classList.remove('active');
     document.getElementById('blockForm').reset();
     document.getElementById('saveToLibrary').checked = false;
+    stopEditingLock();
 }
 
 function previewImage(input) {
@@ -1065,7 +1204,6 @@ document.getElementById('blockForm').addEventListener('submit', async (e) => {
     // D2: avoid refetching the entire app_data; renderStoryline refreshes this
     // storyline (and storylinesData[currentStoryline]) on its own.
     await renderStoryline(currentStoryline);
-    refreshDataStatus();
 
     if (isNewInject) {
         // Scroll to the new inject (last one in the list)
@@ -1100,11 +1238,13 @@ function openStorylineModal(id = null) {
     document.getElementById('storylineModalTitle').textContent = isEdit ? 'Rename' : 'New Storyline';
     document.getElementById('storylineName').value = isEdit ? storylinesData[id].name : '';
     document.getElementById('storylineModal').classList.add('active');
+    startEditingLock('storyline', isEdit ? id : null);
 }
 
 function closeStorylineModal() {
     document.getElementById('storylineModal').classList.remove('active');
     editingStorylineId = null;
+    stopEditingLock();
 }
 
 document.getElementById('storylineForm').addEventListener('submit', async (e) => {
@@ -1282,7 +1422,8 @@ function openBranchModal(parentInjectId, branchData = null) {
     }
     
     document.getElementById('branchModal').classList.add('active');
-    
+    startEditingLock('branch', branchData?.id);
+
     // Focus branch name field after modal is visible
     setTimeout(() => {
         document.getElementById('branchName').focus();
@@ -1293,6 +1434,7 @@ function closeBranchModal() {
     document.getElementById('branchModal').classList.remove('active');
     document.getElementById('branchForm').reset();
     document.getElementById('saveBranchToLibraryBtn').style.display = 'none';
+    stopEditingLock();
 }
 
 document.getElementById('branchForm').addEventListener('submit', async (e) => {
@@ -1419,7 +1561,8 @@ function openBranchInjectModal(branchId, injectData = null) {
     populatePlayerTypesCheckboxes('branchInjectPlayerTypes', injectData?.target_player_types || []);
     
     document.getElementById('branchInjectModal').classList.add('active');
-    
+    startEditingLock('branch_inject', injectData?.id);
+
     // Focus heading field after modal is visible
     setTimeout(() => {
         document.getElementById('branchInjectHeading').focus();
@@ -1430,6 +1573,7 @@ function closeBranchInjectModal() {
     document.getElementById('branchInjectModal').classList.remove('active');
     document.getElementById('branchInjectForm').reset();
     document.getElementById('branchInjectSaveToLibrary').checked = false;
+    stopEditingLock();
 }
 
 function previewBranchImage(input) {
@@ -1592,6 +1736,7 @@ function openHelpModal() {
 
 function closeHelpModal() {
     document.getElementById('helpModal').classList.remove('active');
+    flushPendingRefresh();
 }
 
 // ============ Player Types ============
@@ -1618,6 +1763,7 @@ function openPlayerTypesModal() {
 
 function closePlayerTypesModal() {
     document.getElementById('playerTypesModal').classList.remove('active');
+    flushPendingRefresh();
 }
 
 function loadPlayerTypes() {
@@ -1709,6 +1855,7 @@ function openPlayerLinksModal() {
 
 function closePlayerLinksModal() {
     document.getElementById('playerLinksModal').classList.remove('active');
+    flushPendingRefresh();
 }
 
 async function regenerateAllLinks() {
@@ -1831,72 +1978,82 @@ function loadLibrary() {
 }
 
 function renderLibrary() {
-    const content = document.getElementById('libraryContent');
+    const injectsWrap = document.getElementById('libraryInjectsCards');
+    const branchesWrap = document.getElementById('librarySidequestsCards');
     const countEl = document.getElementById('libraryCount');
-    
-    // Update count display
-    if (countEl) {
-        countEl.textContent = `(${libraryInjects.length})`;
-    }
-    
-    if (libraryInjects.length === 0) {
-        content.innerHTML = '<div class="library-empty">No injects in library. Save injects here to reuse them across storylines.</div>';
-        return;
-    }
-    
-    content.innerHTML = libraryInjects.map(item => {
-        // Check if this is a branch or a single inject
-        if (item.type === 'branch') {
-            const injectCount = item.injects?.length || 0;
-            const firstInject = item.injects?.[0];
-            
-            return `
-                <div class="library-card library-branch-card" 
-                     draggable="true"
-                     data-library-id="${item.id}"
-                     data-library-type="branch"
-                     ondragstart="handleLibraryBranchDragStart(event, '${item.id}')"
-                     ondragend="handleLibraryBranchDragEnd(event)">
-                    <div class="block-header">
-                        <span class="block-number library-branch-number">⑂</span>
-                        <span class="library-branch-count">${injectCount} injects</span>
-                        <div class="block-actions">
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); showLibraryBranchDetails('${item.id}')" title="View details">👁</button>
-                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteLibraryItem('${item.id}')" title="Delete">✕</button>
-                        </div>
-                    </div>
-                    <div class="block-body">
-                        <div class="block-title">${escapeHtml(item.name || 'Unnamed Branch')}</div>
-                        ${firstInject?.image ? `<img src="${firstInject.image}" class="block-image">` : ''}
-                        <div class="block-text">${item.auto_trigger ? '🔄 Auto-trigger' : '👆 Manual trigger'}</div>
-                    </div>
+    const injCountEl = document.getElementById('libraryInjectsCount');
+    const sqCountEl = document.getElementById('librarySidequestsCount');
+    if (!injectsWrap || !branchesWrap) return;
+
+    const injects = libraryInjects.filter(item => item.type !== 'branch');
+    const branches = libraryInjects.filter(item => item.type === 'branch');
+
+    if (countEl) countEl.textContent = `(${libraryInjects.length})`;
+    if (injCountEl) injCountEl.textContent = `(${injects.length})`;
+    if (sqCountEl) sqCountEl.textContent = `(${branches.length})`;
+
+    injectsWrap.innerHTML = injects.length
+        ? injects.map(buildLibraryInjectCard).join('')
+        : '<div class="library-empty">No injects yet. Save an inject here to reuse it.</div>';
+
+    branchesWrap.innerHTML = branches.length
+        ? branches.map(buildLibraryBranchCard).join('')
+        : '<div class="library-empty">No sidequests yet. Save a branch here to reuse it.</div>';
+}
+
+// A reusable single inject. Keeps the .library-card class so the timeline-style
+// hover preview applies (see initInjectPreviewHover).
+function buildLibraryInjectCard(item) {
+    return `
+        <div class="library-card"
+             draggable="true"
+             data-library-id="${item.id}"
+             data-library-type="inject"
+             ondragstart="handleLibraryDragStart(event, '${item.id}')"
+             ondragend="handleLibraryDragEnd(event)">
+            <div class="block-header">
+                <div class="block-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); editLibraryInject('${item.id}')" title="Edit">✎</button>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); addLibraryInjectToStoryline('${item.id}')" title="Add to storyline">➕</button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteLibraryItem('${item.id}')" title="Delete">✕</button>
                 </div>
-            `;
-        } else {
-            // Regular inject
-            return `
-                <div class="library-card" 
-                     draggable="true" 
-                     data-library-id="${item.id}"
-                     data-library-type="inject"
-                     ondragstart="handleLibraryDragStart(event, '${item.id}')"
-                     ondragend="handleLibraryDragEnd(event)">
-                    <div class="block-header">
-                        <div class="block-actions">
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); editLibraryInject('${item.id}')" title="Edit">✎</button>
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); addLibraryInjectToStoryline('${item.id}')" title="Add to storyline">➕</button>
-                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteLibraryItem('${item.id}')" title="Delete">✕</button>
-                        </div>
-                    </div>
-                    <div class="block-body">
-                        <div class="block-title">${escapeHtml(item.heading || 'Untitled')}</div>
-                        ${item.image ? `<img src="${item.image}" class="block-image">` : ''}
-                        ${item.text ? `<div class="block-text">${escapeHtml(item.text)}</div>` : ''}
-                    </div>
+            </div>
+            <div class="block-body">
+                <div class="block-title">${escapeHtml(item.heading || 'Untitled')}</div>
+                ${item.image ? `<img src="${item.image}" class="block-image">` : ''}
+                ${item.text ? `<div class="block-text">${escapeHtml(item.text)}</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// A reusable sidequest (branch). No hover preview — handled by the type check
+// in initInjectPreviewHover.
+function buildLibraryBranchCard(item) {
+    const injectCount = item.injects?.length || 0;
+    const firstInject = item.injects?.[0];
+    return `
+        <div class="library-card library-branch-card"
+             draggable="true"
+             data-library-id="${item.id}"
+             data-library-type="branch"
+             ondragstart="handleLibraryBranchDragStart(event, '${item.id}')"
+             ondragend="handleLibraryBranchDragEnd(event)">
+            <div class="block-header">
+                <span class="block-number library-branch-number">⑂</span>
+                <span class="library-branch-count">${injectCount} injects</span>
+                <div class="block-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); showLibraryBranchDetails('${item.id}')" title="View details">👁</button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteLibraryItem('${item.id}')" title="Delete">✕</button>
                 </div>
-            `;
-        }
-    }).join('');
+            </div>
+            <div class="block-body">
+                <div class="block-title">${escapeHtml(item.name || 'Unnamed Branch')}</div>
+                ${firstInject?.image ? `<img src="${firstInject.image}" class="block-image">` : ''}
+                <div class="block-text">${item.auto_trigger ? '🔄 Auto-trigger' : '👆 Manual trigger'}</div>
+            </div>
+        </div>
+    `;
 }
 
 function openLibraryInjectModal(injectId = null) {
@@ -1940,11 +2097,13 @@ function openLibraryInjectModal(injectId = null) {
     }
     
     modal.classList.add('active');
+    startEditingLock('library', injectId);
     document.getElementById('libraryInjectHeading').focus();
 }
 
 function closeLibraryInjectModal() {
     document.getElementById('libraryInjectModal').classList.remove('active');
+    stopEditingLock();
 }
 
 function previewLibraryImage(input) {
@@ -2036,6 +2195,7 @@ function showLibraryBranchDetails(branchId) {
 
 function closeLibraryBranchDetailsModal() {
     document.getElementById('libraryBranchDetailsModal').classList.remove('active');
+    flushPendingRefresh();
 }
 
 async function addLibraryBranchToStoryline(branchId, parentInjectId) {
@@ -2083,7 +2243,8 @@ function handleLibraryDragStart(event, injectId) {
 function handleLibraryDragEnd(event) {
     event.target.classList.remove('dragging');
     draggedLibraryInjectId = null;
-    
+    clearLibraryReorderIndicator();
+
     // Remove any drop indicators
     document.querySelectorAll('.drop-indicator').forEach(el => el.remove());
     document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
@@ -2105,9 +2266,92 @@ function handleLibraryBranchDragStart(event, branchId) {
 function handleLibraryBranchDragEnd(event) {
     event.target.classList.remove('dragging');
     draggedLibraryBranchId = null;
-    
+    clearLibraryReorderIndicator();
+
     // Remove any drop indicators
     document.querySelectorAll('.branch-drop-target').forEach(el => el.classList.remove('branch-drop-target'));
+}
+
+// ============ Library Reordering (within a column) ============
+// Reordering is native HTML5 DnD scoped to the library columns, so it coexists
+// with the existing "drag a library item onto the timeline" behaviour: dropping
+// inside a column reorders; dropping on the timeline still adds to the story.
+function clearLibraryReorderIndicator() {
+    document.querySelectorAll('.library-card.lib-reorder-target')
+        .forEach(c => c.classList.remove('lib-reorder-target'));
+}
+
+function libraryColumnForDrag(target) {
+    const column = target.closest('.library-column');
+    if (!column) return null;
+    // Injects can only reorder among injects; sidequests among sidequests.
+    if (draggedLibraryInjectId && column.id === 'libraryInjectsColumn') return column;
+    if (draggedLibraryBranchId && column.id === 'librarySidequestsColumn') return column;
+    return null;
+}
+
+function initLibraryReorder() {
+    const container = document.getElementById('libraryContent');
+    if (!container) return;
+
+    container.addEventListener('dragover', (e) => {
+        if (!draggedLibraryInjectId && !draggedLibraryBranchId) return;
+        if (!libraryColumnForDrag(e.target)) return;
+        e.preventDefault();
+        // Must match effectAllowed='copy' set in the dragstart handlers, or the
+        // browser will reset the operation to 'none' and the drop won't fire.
+        e.dataTransfer.dropEffect = 'copy';
+        clearLibraryReorderIndicator();
+        const targetCard = e.target.closest('.library-card');
+        if (targetCard && !targetCard.classList.contains('dragging')) {
+            targetCard.classList.add('lib-reorder-target');
+        }
+    });
+
+    container.addEventListener('dragleave', (e) => {
+        const targetCard = e.target.closest('.library-card');
+        if (targetCard) targetCard.classList.remove('lib-reorder-target');
+    });
+
+    container.addEventListener('drop', (e) => {
+        if (!draggedLibraryInjectId && !draggedLibraryBranchId) return;
+        if (!libraryColumnForDrag(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const draggedId = draggedLibraryInjectId || draggedLibraryBranchId;
+        const targetCard = e.target.closest('.library-card');
+        const targetId = targetCard ? targetCard.dataset.libraryId : null;
+        clearLibraryReorderIndicator();
+        reorderLibraryItem(draggedId, targetId);
+    });
+}
+
+function reorderLibraryItem(draggedId, targetId) {
+    if (!draggedId || draggedId === targetId) return;
+    const dragged = libraryInjects.find(it => it.id === draggedId);
+    if (!dragged) return;
+
+    const injectIds = libraryInjects.filter(it => it.type !== 'branch').map(it => it.id);
+    const branchIds = libraryInjects.filter(it => it.type === 'branch').map(it => it.id);
+    const list = dragged.type === 'branch' ? branchIds : injectIds;
+
+    const from = list.indexOf(draggedId);
+    if (from === -1) return;
+    list.splice(from, 1);
+
+    if (targetId && targetId !== draggedId) {
+        const to = list.indexOf(targetId);
+        list.splice(to === -1 ? list.length : to, 0, draggedId);
+    } else {
+        list.push(draggedId); // dropped on empty space -> end of column
+    }
+
+    const order = [...injectIds, ...branchIds];
+    fetch('/api/library/reorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ order })
+    }).then(() => loadLibrary());
 }
 
 // Add drop zone handling to main storyline row
@@ -2410,6 +2654,7 @@ function openImportModal() {
 function closeImportModal() {
     document.getElementById('importModal').classList.remove('active');
     importData = null;
+    flushPendingRefresh();
 }
 
 function previewImportFile(input) {
@@ -2754,6 +2999,9 @@ function initClocks() {
 
 // ============ Inject Preview Hover ============
 let previewTimeout = null;
+// Library previews are forced above the cursor (the library is at the bottom of
+// the screen); storyline previews keep their default below/auto placement.
+let previewAboveCursor = false;
 
 function showInjectPreview(event, block) {
     const previewCard = document.getElementById('injectPreviewCard');
@@ -2792,11 +3040,11 @@ function showInjectPreview(event, block) {
     // GM Notes
     gmNotesEl.textContent = block.gm_notes || '';
     
-    // Position the card
-    positionPreviewCard(event);
-    
-    // Show the card
+    // Show the card first (it's display:none until .visible) so it has real
+    // dimensions, then position it. Both happen in one tick — no flash, and the
+    // height is now correct for the library "above the cursor" placement.
     previewCard.classList.add('visible');
+    positionPreviewCard(event);
 }
 
 function positionPreviewCard(event) {
@@ -2816,11 +3064,15 @@ function positionPreviewCard(event) {
         left = event.clientX - cardRect.width - padding;
     }
     
-    // Adjust if card would go off bottom edge
-    if (top + cardRect.height > viewportHeight - padding) {
+    if (previewAboveCursor) {
+        // Library previews: always above the cursor so they don't run off the
+        // bottom of the screen.
+        top = event.clientY - cardRect.height - padding;
+    } else if (top + cardRect.height > viewportHeight - padding) {
+        // Storyline previews: default below, flip above only if off the bottom.
         top = event.clientY - cardRect.height - padding;
     }
-    
+
     // Ensure not off left or top edge
     left = Math.max(padding, left);
     top = Math.max(padding, top);
@@ -2847,9 +3099,11 @@ function initInjectPreviewHover() {
         // Get the block ID - library cards use data-library-id, others use data-id
         const blockId = blockCard.dataset.id || blockCard.dataset.libraryId;
         if (!blockId) return;
-        
+
         let block = null;
-        
+        // Force library previews above the cursor; leave storyline previews as-is.
+        previewAboveCursor = blockCard.classList.contains('library-card');
+
         // Check if this is a library card
         if (blockCard.classList.contains('library-card')) {
             // Find in library data - skip branches for now
@@ -2905,10 +3159,41 @@ function initInjectPreviewHover() {
     });
 }
 
+// Close the topmost open modal when Escape is pressed. Uses each modal's own
+// close function so its cleanup (form reset, editing-lock release, etc.) runs.
+function initModalEscToClose() {
+    const closers = {
+        blockModal: closeBlockModal,
+        storylineModal: closeStorylineModal,
+        branchModal: closeBranchModal,
+        branchInjectModal: closeBranchInjectModal,
+        playerTypesModal: closePlayerTypesModal,
+        playerLinksModal: closePlayerLinksModal,
+        helpModal: closeHelpModal,
+        libraryInjectModal: closeLibraryInjectModal,
+        libraryBranchDetailsModal: closeLibraryBranchDetailsModal,
+        importModal: closeImportModal,
+        alertModal: closeAlertModal,
+        confirmModal: () => closeConfirmModal(false), // Esc = cancel
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const open = document.querySelectorAll('.modal-overlay.active');
+        if (open.length === 0) return;
+        const top = open[open.length - 1]; // last in DOM = topmost
+        const close = closers[top.id];
+        if (close) close();
+        else top.classList.remove('active');
+    });
+}
+
 // Load session notes on startup
 document.addEventListener('DOMContentLoaded', function() {
     loadSessionNotes();
     adjustLayoutForControlBar();
     initClocks();
     initInjectPreviewHover();
+    initLibraryReorder();
+    initModalEscToClose();
 });

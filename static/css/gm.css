@@ -611,14 +611,58 @@ h1 {
 }
 
 .library-content {
-    padding: 12px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 120px;
+    max-height: 300px;
+    overflow: hidden; /* each column scrolls on its own */
+    border-radius: 6px 6px 0 0;
+}
+
+/* Split library: injects on the left, sidequests on the right */
+.library-column {
+    flex: 1 1 50%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.library-column + .library-column {
+    border-left: 1px solid #30363d;
+}
+
+.library-column-header {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a371f7;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: #1b2129;
+    border-bottom: 1px solid #30363d;
+}
+
+.library-column-count {
+    color: #6e7681;
+    font-weight: 400;
+}
+
+.library-column-cards {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    min-height: 100px;
-    max-height: 280px;
+    padding: 12px;
     overflow-y: auto;
-    border-radius: 6px 6px 0 0;
+    align-content: flex-start;
+    flex: 1;
+    min-height: 80px;
+}
+
+/* Insertion indicator while reordering within a column */
+.library-card.lib-reorder-target {
+    box-shadow: -3px 0 0 0 #a371f7;
 }
 
 .library-empty {
@@ -2057,6 +2101,19 @@ body.light-mode .library-count {
     color: #6a6a7a;
 }
 
+body.light-mode .library-column + .library-column {
+    border-left-color: #e0e0e0;
+}
+
+body.light-mode .library-column-header {
+    background: #ece9f5;
+    border-bottom-color: #e0e0e0;
+}
+
+body.light-mode .library-column-count {
+    color: #6a6a7a;
+}
+
 body.light-mode .library-card {
     background: #f5f5f7;
     border-color: #e0e0e0;
@@ -2575,46 +2632,16 @@ body.light-mode .player-types-empty {
     color: #6a6a7a;
 }
 
-/* ============ Data size warning banner ============ */
-.data-warning-banner {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 8px 16px 0;
-    padding: 10px 14px;
-    background: #3a2e0a;
-    border: 1px solid #c9961f;
-    border-left: 4px solid #f0b429;
-    border-radius: 8px;
-    color: #f5e6b8;
-    font-size: 0.9rem;
-}
-
-.data-warning-banner .data-warning-icon {
-    font-size: 1.1rem;
-}
-
-.data-warning-banner #dataWarningText {
-    flex: 1;
-}
-
-.data-warning-close {
-    background: transparent;
-    border: none;
-    color: inherit;
-    font-size: 1rem;
-    cursor: pointer;
-    opacity: 0.7;
-    padding: 2px 6px;
-}
-
-.data-warning-close:hover {
-    opacity: 1;
-}
-
-body.light-mode .data-warning-banner {
-    background: #fff7e0;
-    border-color: #e0a82e;
-    border-left-color: #d98e04;
-    color: #7a5c00;
+/* ============ Collaborative editing conflict banner ============ */
+.editing-conflict-banner {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: #4a1d1d;
+    border: 1px solid #d9534f;
+    border-left: 4px solid #d9534f;
+    color: #ffd7d4;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
 }

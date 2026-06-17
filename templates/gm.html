@@ -2,8 +2,8 @@
 <html>
 <head>
     <title>StoryTeller - Game Master</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="{{ url_for('static', filename='js/vendor/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vendor/Sortable.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/gm.css') }}">
 </head>
 <body>
@@ -71,14 +71,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- Data size warning banner -->
-    <div class="data-warning-banner" id="dataWarningBanner" style="display:none;">
-        <span class="data-warning-icon">⚠️</span>
-        <span id="dataWarningText"></span>
-        <button class="btn btn-sm" id="optimizeImagesBtn" onclick="optimizeImages()">Optimize images now</button>
-        <button class="data-warning-close" onclick="dismissDataWarning()" title="Dismiss">✕</button>
-    </div>
 
     <!-- Main Content -->
     <div class="main-layout">
@@ -130,7 +122,18 @@
                 <button class="btn btn-sm" onclick="event.stopPropagation(); openLibraryInjectModal()">+ Add to Library</button>
             </div>
             <div class="library-content" id="libraryContent">
-                <div class="library-empty">No injects in library. Save injects here to reuse them across storylines.</div>
+                <div class="library-column" id="libraryInjectsColumn">
+                    <div class="library-column-header">Injects <span class="library-column-count" id="libraryInjectsCount"></span></div>
+                    <div class="library-column-cards" id="libraryInjectsCards">
+                        <div class="library-empty">No injects yet. Save an inject here to reuse it.</div>
+                    </div>
+                </div>
+                <div class="library-column" id="librarySidequestsColumn">
+                    <div class="library-column-header">Sidequests <span class="library-column-count" id="librarySidequestsCount"></span></div>
+                    <div class="library-column-cards" id="librarySidequestsCards">
+                        <div class="library-empty">No sidequests yet. Save a branch here to reuse it.</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -144,6 +147,7 @@
             </div>
             <form id="blockForm">
                 <div class="modal-body">
+                    <div class="editing-conflict-banner" style="display:none;"></div>
                     <input type="hidden" id="blockId">
                     <div class="form-group">
                         <label class="form-label">Heading *</label>
@@ -213,6 +217,7 @@
             </div>
             <form id="storylineForm">
                 <div class="modal-body">
+                    <div class="editing-conflict-banner" style="display:none;"></div>
                     <div class="form-group">
                         <label class="form-label">Name *</label>
                         <input type="text" class="form-input" id="storylineName" required>
@@ -235,6 +240,7 @@
             </div>
             <form id="branchForm">
                 <div class="modal-body">
+                    <div class="editing-conflict-banner" style="display:none;"></div>
                     <input type="hidden" id="branchId">
                     <input type="hidden" id="branchParentInjectId">
                     <div class="form-group">
@@ -276,6 +282,7 @@
             </div>
             <form id="branchInjectForm">
                 <div class="modal-body">
+                    <div class="editing-conflict-banner" style="display:none;"></div>
                     <input type="hidden" id="branchInjectId">
                     <input type="hidden" id="branchInjectBranchId">
                     <div class="form-group">
@@ -514,6 +521,7 @@
             </div>
             <form id="libraryInjectForm">
                 <div class="modal-body">
+                    <div class="editing-conflict-banner" style="display:none;"></div>
                     <input type="hidden" id="libraryInjectId">
                     <div class="form-group">
                         <label class="form-label">Heading *</label>
