@@ -7,7 +7,11 @@ from data import app_data, save_data
 playback = {
     'playing': False,
     'remaining': 0,
-    'current_source': 'main',  # 'main' or branch_id - what's currently showing
+    'current_source': 'main',  # 'main' or branch_id - top of the navigation stack
+    # Parent frames for nested branches. Each frame: {'source', 'inject_idx'}.
+    # When we descend into a sub-branch we push the frame we came from so that
+    # finishing the sub-branch can resume the parent branch (or main).
+    'branch_stack': [],
 }
 
 # Track last shown inject per player type (for when inject is targeted to others)
@@ -79,6 +83,106 @@ def get_storyline():
     if storyline_id and storyline_id in app_data['storylines']:
         return app_data['storylines'][storyline_id], storyline_id
     return None, None
+
+
+def _branch_ancestor_path(storyline, branch_id):
+    """Return branch ids from the outermost ancestor branch down to branch_id
+    (inclusive). A main-level branch yields [branch_id]. Nested branches yield
+    [root_branch, ..., branch_id]."""
+    branches = storyline.get('branches', [])
+    by_id = {b['id']: b for b in branches}
+    path = []
+    seen = set()
+    current = by_id.get(branch_id)
+    while current and current['id'] not in seen:
+        seen.add(current['id'])
+        path.insert(0, current['id'])
+        parent_inject_id = current.get('parent_inject_id')
+        parent_branch = None
+        for b in branches:
+            if any(inj['id'] == parent_inject_id for inj in b.get('injects', [])):
+                parent_branch = b
+                break
+        current = parent_branch
+    return path
+
+
+def find_inject(storyline, inject_id):
+    """Find an inject anywhere in the storyline (main blocks OR any branch's
+    injects). Returns (inject, kind, container_id, index, ancestor_path):
+      kind         'main' or 'branch' (None if not found)
+      container_id 'main' or the branch id holding the inject
+      index        position within its container
+      ancestor_path branch ids root..leaf for the holding branch ([] for main).
+    """
+    if not storyline or not inject_id:
+        return None, None, None, None, []
+    for i, b in enumerate(storyline.get('blocks', [])):
+        if b['id'] == inject_id:
+            return b, 'main', 'main', i, []
+    for branch in storyline.get('branches', []):
+        for i, inj in enumerate(branch.get('injects', [])):
+            if inj['id'] == inject_id:
+                return (inj, 'branch', branch['id'], i,
+                        _branch_ancestor_path(storyline, branch['id']))
+    return None, None, None, None, []
+
+
+def _get_container_injects(storyline, source):
+    """Return (injects_list, current_index) for a source ('main' or branch id)."""
+    if source == 'main':
+        return storyline.get('blocks', []), storyline.get('current_block', 0)
+    branch = next((b for b in storyline.get('branches', []) if b['id'] == source), None)
+    if branch:
+        return branch.get('injects', []), branch.get('current_inject', 0)
+    return [], 0
+
+
+def _set_container_index(storyline, source, idx):
+    """Set the current-inject pointer for a source ('main' or branch id)."""
+    if source == 'main':
+        storyline['current_block'] = idx
+        return
+    branch = next((b for b in storyline.get('branches', []) if b['id'] == source), None)
+    if branch:
+        branch['current_inject'] = idx
+
+
+def _build_parent_frames(storyline, ancestor_path):
+    """Rebuild the parent-frame stack for a target located in the branch at the
+    end of ancestor_path (root..leaf branch ids). Returns frames excluding the
+    target itself. Empty list for a main-level target."""
+    frames = []
+    if not ancestor_path:
+        return frames
+    branches = storyline.get('branches', [])
+    by_id = {b['id']: b for b in branches}
+    # Frame beneath the root branch: the main block it hangs off of.
+    root = by_id.get(ancestor_path[0])
+    _, kind, _, idx, _ = find_inject(storyline, root.get('parent_inject_id') if root else None)
+    if kind == 'main':
+        frames.append({'source': 'main', 'inject_idx': idx})
+    # Each intermediate ancestor becomes a frame at the inject that spawned the
+    # next branch down the chain.
+    for depth in range(1, len(ancestor_path)):
+        child = by_id.get(ancestor_path[depth])
+        _, _, cid, idx, _ = find_inject(storyline, child.get('parent_inject_id') if child else None)
+        if cid == ancestor_path[depth - 1]:
+            frames.append({'source': ancestor_path[depth - 1], 'inject_idx': idx})
+    return frames
+
+
+def _position_at(storyline, container_id, idx, ancestor_path):
+    """Place playback directly at a specific inject anywhere in the storyline,
+    rebuilding the return stack and activating the branch chain leading to it."""
+    playback['branch_stack'] = _build_parent_frames(storyline, ancestor_path)
+    playback['current_source'] = container_id
+    _set_container_index(storyline, container_id, idx)
+    if container_id != 'main':
+        active = storyline.setdefault('active_branches', [])
+        for bid in ancestor_path:
+            if bid not in active:
+                active.append(bid)
 
 
 def get_current_inject():
@@ -402,144 +506,156 @@ def broadcast_to_single_player(player_type):
     })
 
 
-def check_auto_trigger_branches():
-    """Check if any branches should auto-trigger at current main inject."""
+def check_auto_trigger_branches(inject_id=None):
+    """Auto-activate any auto_trigger branch whose parent is the given inject.
+    Works for any inject (main block or a branch inject), enabling nested
+    auto-triggers. Defaults to the current main inject for backward compat."""
     storyline, _ = get_storyline()
     if not storyline:
         return
-    
-    blocks = storyline.get('blocks', [])
-    current_idx = storyline.get('current_block', 0)
-    
-    if not blocks or current_idx >= len(blocks):
-        return
-    
-    current_block_id = blocks[current_idx]['id']
+
+    if inject_id is None:
+        blocks = storyline.get('blocks', [])
+        current_idx = storyline.get('current_block', 0)
+        if not blocks or current_idx >= len(blocks):
+            return
+        inject_id = blocks[current_idx]['id']
+
     branches = storyline.get('branches', [])
     active_branches = storyline.get('active_branches', [])
-    
+
     for branch in branches:
-        if (branch.get('auto_trigger') and 
-            branch.get('parent_inject_id') == current_block_id and
+        if (branch.get('auto_trigger') and
+            branch.get('parent_inject_id') == inject_id and
             branch['id'] not in active_branches and
             branch.get('injects')):
             # Auto-activate this branch
             active_branches.append(branch['id'])
             branch['current_inject'] = 0
-    
+
     storyline['active_branches'] = active_branches
     schedule_save()
 
 
 def advance_to_next():
     """
-    Advance to the next inject.
-    If on main and branch is waiting, switch to branch.
-    If in branch, advance branch. If branch done, merge to target or continue main.
-    Returns True if advanced successfully.
+    Advance to the next inject using a single stack-based rule that works at any
+    nesting depth:
+      1. If an active (sub-)branch is waiting on the CURRENT inject, descend into
+         it (pushing the current frame so we can return later).
+      2. Otherwise advance within the current container.
+      3. If the current container is a branch that just finished, merge to its
+         target (anywhere) or pop back to the parent frame (parent branch/main).
+    Returns True if playback moved.
     """
     storyline, _ = get_storyline()
     if not storyline:
         return False
-    
+
     active_branches = storyline.get('active_branches', [])
     branches = storyline.get('branches', [])
-    current_source = playback.get('current_source', 'main')
-    blocks = storyline.get('blocks', [])
-    current_main_idx = storyline.get('current_block', 0)
-    
-    # If we're currently showing main, check if we should switch to a branch
-    if current_source == 'main':
-        # Check if any active branch is waiting to play that's attached to the CURRENT main inject
-        current_block_id = blocks[current_main_idx]['id'] if blocks and current_main_idx < len(blocks) else None
-        
+    source = playback.get('current_source', 'main')
+
+    injects, cur_idx = _get_container_injects(storyline, source)
+    current_inject_id = injects[cur_idx]['id'] if injects and cur_idx < len(injects) else None
+
+    # 1. Descend into a waiting sub-branch attached to the current inject.
+    if current_inject_id is not None:
         for branch_id in active_branches:
+            if branch_id == source:
+                continue
             branch = next((b for b in branches if b['id'] == branch_id), None)
-            if branch and branch.get('injects'):
-                idx = branch.get('current_inject', 0)
-                # Only switch to branch if it's attached to current main inject
-                if idx < len(branch['injects']) and branch.get('parent_inject_id') == current_block_id:
-                    # Switch to this branch
-                    playback['current_source'] = branch_id
-                    broadcast_current_block()
-                    return True
-        
-        # No branch waiting for current inject, advance main storyline
+            if not branch or not branch.get('injects'):
+                continue
+            idx = branch.get('current_inject', 0)
+            if idx < len(branch['injects']) and branch.get('parent_inject_id') == current_inject_id:
+                playback.setdefault('branch_stack', []).append(
+                    {'source': source, 'inject_idx': cur_idx})
+                playback['current_source'] = branch_id
+                schedule_save()
+                check_auto_trigger_branches(branch['injects'][idx]['id'])
+                broadcast_current_block()
+                return True
+
+    # 2. On main with nothing waiting -> advance main.
+    if source == 'main':
         return advance_main()
-    
-    # We're showing a branch - check if it's still active
-    if current_source in active_branches:
-        # Branch is active, try to advance it
-        branch = next((b for b in branches if b['id'] == current_source), None)
+
+    # 3a. Active branch -> advance within it, or finish it.
+    if source in active_branches:
+        branch = next((b for b in branches if b['id'] == source), None)
         if branch:
             current = branch.get('current_inject', 0)
             if current < len(branch.get('injects', [])) - 1:
-                # More injects in this branch
                 branch['current_inject'] = current + 1
                 schedule_save()
+                check_auto_trigger_branches(branch['injects'][current + 1]['id'])
                 broadcast_current_block()
                 return True
-            else:
-                # Branch finished, deactivate it
-                active_branches.remove(current_source)
-                storyline['active_branches'] = active_branches
-                
-                # Check if branch has a merge target
-                merge_to = branch.get('merge_to_inject_id')
-                if merge_to:
-                    # Jump main storyline to merge target
-                    merge_idx = next((i for i, b in enumerate(blocks) if b['id'] == merge_to), None)
-                    if merge_idx is not None:
-                        storyline['current_block'] = merge_idx
-                        playback['current_source'] = 'main'
-                        schedule_save()
-                        check_auto_trigger_branches()
-                        broadcast_current_block()
-                        return True
-                
-                schedule_save()
-                
-                # Check if another branch is waiting for the current main inject
-                current_block_id = blocks[current_main_idx]['id'] if blocks and current_main_idx < len(blocks) else None
-                for branch_id in active_branches:
-                    other_branch = next((b for b in branches if b['id'] == branch_id), None)
-                    if other_branch and other_branch.get('injects'):
-                        idx = other_branch.get('current_inject', 0)
-                        if idx < len(other_branch['injects']) and other_branch.get('parent_inject_id') == current_block_id:
-                            # Switch to this branch
-                            playback['current_source'] = branch_id
-                            broadcast_current_block()
-                            return True
-                
-                # No more branches for current inject, go back to main and advance
-                playback['current_source'] = 'main'
-                return advance_main()
-    else:
-        # Branch was stopped (not in active_branches), go back to main and advance
-        playback['current_source'] = 'main'
-        return advance_main()
-    
-    # Fallback: advance main
+            return _finish_branch(storyline, source)
+
+    # 3b. Branch was stopped by the GM -> resume parent (or main) and advance.
+    return _resume_parent(storyline)
+
+
+def _finish_branch(storyline, branch_id):
+    """A branch reached its last inject. Deactivate it, then merge to its target
+    (any inject) if set, otherwise resume the parent frame."""
+    branches = storyline.get('branches', [])
+    active_branches = storyline.get('active_branches', [])
+    branch = next((b for b in branches if b['id'] == branch_id), None)
+
+    if branch_id in active_branches:
+        active_branches.remove(branch_id)
+        storyline['active_branches'] = active_branches
+
+    merge_to = branch.get('merge_to_inject_id') if branch else None
+    if merge_to:
+        target, _, container_id, idx, ancestor_path = find_inject(storyline, merge_to)
+        if target is not None:
+            _position_at(storyline, container_id, idx, ancestor_path)
+            schedule_save()
+            check_auto_trigger_branches(target['id'])
+            broadcast_current_block()
+            return True
+
+    schedule_save()
+    return _resume_parent(storyline)
+
+
+def _resume_parent(storyline):
+    """Pop one frame off the navigation stack and continue advancing from the
+    parent inject. With an empty stack we're back at the top level (main)."""
+    stack = playback.get('branch_stack', [])
+    if stack:
+        frame = stack.pop()
+        playback['current_source'] = frame['source']
+        _set_container_index(storyline, frame['source'], frame['inject_idx'])
+        schedule_save()
+        return advance_to_next()
+
+    playback['current_source'] = 'main'
     return advance_main()
 
 
 def advance_main():
-    """Advance the main storyline."""
+    """Advance the main storyline (top level)."""
     storyline, _ = get_storyline()
     if not storyline:
         return False
-    
+
     blocks = storyline.get('blocks', [])
     current = storyline.get('current_block', 0)
-    
+
     if current < len(blocks) - 1:
         storyline['current_block'] = current + 1
         playback['current_source'] = 'main'
+        playback['branch_stack'] = []
         schedule_save()
         check_auto_trigger_branches()
         broadcast_current_block()
         return True
-    
+
     return False
 
 
@@ -663,6 +779,7 @@ def register_socket_handlers(socketio, app=None):
             if current > 0:
                 storyline['current_block'] = current - 1
                 playback['current_source'] = 'main'
+                playback['branch_stack'] = []
                 schedule_save()
         broadcast_current_block()
         if playback['playing']:
@@ -679,7 +796,8 @@ def register_socket_handlers(socketio, app=None):
             if 0 <= index < len(blocks):
                 storyline['current_block'] = index
                 playback['current_source'] = 'main'
-                
+                playback['branch_stack'] = []
+
                 # If resetting to start (index 0), also reset all branches
                 if index == 0:
                     storyline['active_branches'] = []
@@ -707,18 +825,11 @@ def register_socket_handlers(socketio, app=None):
             if branch:
                 injects = branch.get('injects', [])
                 if 0 <= inject_index < len(injects):
-                    # Set the branch's current inject
-                    branch['current_inject'] = inject_index
-                    
-                    # Activate the branch if not already active
-                    active_branches = storyline.get('active_branches', [])
-                    if branch_id not in active_branches:
-                        active_branches.append(branch_id)
-                        storyline['active_branches'] = active_branches
-                    
-                    # Switch playback to this branch
-                    playback['current_source'] = branch_id
-                    
+                    # Jump directly to this (possibly nested) branch inject,
+                    # rebuilding the return stack from its ancestor chain so that
+                    # finishing it resumes the correct parent(s).
+                    ancestor_path = _branch_ancestor_path(storyline, branch_id)
+                    _position_at(storyline, branch_id, inject_index, ancestor_path)
                     schedule_save()
         broadcast_current_block()
         if playback['playing']:

@@ -29,9 +29,9 @@ I need you to create a JSON data file for a storytelling application called Stor
         {
           "id": "BRANCH_UUID",
           "name": "Branch Name",
-          "parent_inject_id": "ID of the inject this branches from",
+          "parent_inject_id": "ID of ANY inject this branches from - a main block OR a branch inject (for nested side-quests)",
           "auto_trigger": false,
-          "merge_to_inject_id": "ID of inject to resume at after branch, or null",
+          "merge_to_inject_id": "ID of ANY inject to resume at after this branch finishes (main or branch inject), or null",
           "current_inject": 0,
           "injects": [
             {
@@ -80,39 +80,48 @@ I need you to create a JSON data file for a storytelling application called Stor
    - Make choices meaningful but all lead to a happy ending
 
 5. **Branch rules to follow:**
-   - All branches must be manual (`"auto_trigger": false`) since multiple branches will be attached to the same inject
-   - An inject can only have ONE auto-trigger branch, OR multiple manual branches - never both
+   - All choice branches must be manual (`"auto_trigger": false`) since multiple branches will be attached to the same inject
+   - An inject can only have ONE auto-trigger branch, OR multiple manual branches - never both (this rule applies at EVERY level, including nested branches)
    - Use manual branches for all choice points
 
-6. **Example choice structure:**
-   - Inject #5: "You reach a crossroads. Three paths lie before you."
-   - Branch A (parent: #5): "The Sunny Meadow Path" - 2 injects, merges to #8
-   - Branch B (parent: #5): "The Whispering Woods Path" - 3 injects, merges to #8  
-   - Branch C (parent: #5): "The Stepping Stones Path" - 2 injects, merges to #10 (skips ahead!)
+6. **Nested side-quests (sub-branches):** Branches can now branch off of each other, to any depth.
+   - To nest a side-quest, set a branch's `parent_inject_id` to the `id` of an inject that lives INSIDE another branch (not a main block)
+   - Playback dives into the sub-branch when that branch inject is reached, then returns to the parent branch (and eventually the main storyline) when the sub-branch finishes
+   - Create 1-2 nested side-quests in your adventure to show off this feature - for example, a choice made inside a side-quest that opens a smaller sub-choice
+   - A sub-branch's `merge_to_inject_id` may point at ANY inject (a main block, its parent branch, or elsewhere), or be `null` to simply return to where it branched from
+   - Keep nesting shallow (1-2 levels deep) so the story stays easy to follow for young players
 
-7. **Durations:** 
+7. **Example choice structure (with nesting):**
+   - Main inject #5: "You reach a crossroads. Three paths lie before you."
+   - Branch A (parent: main #5): "The Sunny Meadow Path" - 2 injects, merges to main #8
+   - Branch B (parent: main #5): "The Whispering Woods Path" - 3 injects, merges to main #8
+     - Sub-branch B1 (parent: the 2nd inject of Branch B): "A Talking Owl Offers a Riddle" - 2 injects, merge null (returns into Branch B)
+   - Branch C (parent: main #5): "The Stepping Stones Path" - 2 injects, merges to main #10 (skips ahead!)
+
+8. **Durations:**
    - Set `"duration": 0` for most injects (GM advances manually)
    - Set `"duration": 20` or `"duration": 30` for a few atmospheric moments where auto-advance fits
 
-8. **GM Notes:** Include helpful GM notes with:
+9. **GM Notes:** Include helpful GM notes with:
    - Questions to ask the players ("Ask the children which path looks most exciting!")
    - Actions ("Have players vote on which choice to take")
    - Dice rolls ("Roll a D6 - on 4+, they find a shiny coin!")
    - Tips ("This is a good moment for a snack break")
    - Choice guidance ("If players can't decide, suggest the Meadow Path for younger groups")
 
-9. **Story elements to include:**
+10. **Story elements to include:**
    - A clear quest or goal established early
    - Friendly magical creatures (talking animals, friendly fairies, helpful sprites)
    - 2-3 meaningful choice points where players decide the path
+   - At least one nested side-quest (a choice or discovery inside a side-quest)
    - Moments where each player type gets to shine
    - Consequences that feel different but all lead to success
    - A happy, satisfying ending that references choices made
    - Age-appropriate humor and wonder
 
-10. **UUIDs:** Generate valid UUIDs for all `id` fields (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+11. **UUIDs:** Generate valid UUIDs for all `id` fields (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
 
-11. **Language:** Use simple vocabulary and short sentences appropriate for 6-8 year olds being read to
+12. **Language:** Use simple vocabulary and short sentences appropriate for 6-8 year olds being read to
 
 **Example choice point with branches:**
 

@@ -16,7 +16,7 @@ A visual interactive storytelling tool for Game Masters running tabletop RPGs, o
 - **Player Type Targeting** - Send specific injects to specific player types (e.g., only the Wizard sees magic-related content)
 - **Silent Targeting** - Players see no indication when injects not meant for them are played
 - **Session Notes** - Capture timestamped observations during play with inject references
-- **Inject Library** - Save and reuse injects across storylines
+- **Inject Library** - Save and reuse injects across storylines; export/import the whole library as JSON (duplicates skipped)
 - **Import/Export** - Import/export storylines, player types, and library items as JSON
 - **Zoom Controls** - Zoom in/out with auto-fit to show all injects
 - **Self-Contained Storage** - All data including images stored in JSON files for easy backup
@@ -93,6 +93,15 @@ Branches allow side quests or alternate paths that diverge from the main storyli
 - If an inject has an auto-trigger branch, no additional branches can be added
 - Multiple manual branches on the same inject allow GM choice during play
 
+**Nested Side-Quests:**
+- Any branch inject can itself spawn a sub-branch — click the **⑂ branch button** on a branch inject just like you would on a main inject.
+- Nesting is unlimited: a sub-branch can have its own sub-branches, and so on.
+- Sub-branches render directly beneath their parent inject, with a connector dropping from the center of the parent inject down to the child — the same visual used between the main storyline and a side-quest.
+- Playback descends into a sub-quest when reached and returns to the parent (then eventually the main storyline) when it completes — the same auto/manual/merge rules apply at every level.
+- A branch's **Merge target** can be *any* inject in the storyline (main or another branch), giving full control over where play resumes.
+- **Reorganize branches by dragging:** grab a side-quest and drop it onto another inject to re-parent it. Drop it on a main inject to make it top-level, or on a branch inject to nest it. (You can't drop a branch into its own sub-tree.)
+- Deleting an inject or branch automatically removes any sub-branches hanging off it.
+
 ### Player Types
 
 Target specific content to specific players.
@@ -119,7 +128,7 @@ The **Notes for Later** panel lets you capture observations during play.
 2. Press **Enter** to submit (or **Alt+Enter** for line breaks)
 3. Notes are saved with:
    - **Timestamp** - When the note was created
-   - **Inject reference** - Which inject was active (e.g., "#4-2 Secret Cave" for branch inject 2 on main inject 4)
+   - **Inject reference** - Which inject was active (e.g., "#4-2 Secret Cave" for branch inject 2 on main inject 4; nested sub-quests extend this, e.g. "#4-2-1")
 4. **Export** notes to a text file for post-session review
 5. **Clear All** to reset notes for a new session
 
@@ -194,12 +203,24 @@ Storylines use this structure:
           "image": null
         }
       ],
-      "branches": [...]
+      "branches": [
+        {
+          "id": "branch-uuid",
+          "name": "Side Quest",
+          "parent_inject_id": "id of any inject this branches from",
+          "auto_trigger": false,
+          "merge_to_inject_id": "id of any inject to resume at, or null",
+          "current_inject": 0,
+          "injects": [ /* same shape as blocks */ ]
+        }
+      ]
     }
   },
   "player_types": ["Wizard", "Knight", "Ranger"]
 }
 ```
+
+**Branch references and nesting:** `parent_inject_id` may point at **any** inject — a main block *or* another branch's inject. Pointing it at a branch inject creates a **nested side-quest**, and this can go to any depth. Likewise `merge_to_inject_id` may target any inject anywhere in the storyline (or `null` to resume where the branch started). Branches are stored as a flat list; nesting is expressed purely through these id references, so storylines made before nesting existed load unchanged.
 
 See `prompt.txt` for a ChatGPT prompt that generates complete storylines in this format.
 
@@ -211,6 +232,7 @@ See `prompt.txt` for a ChatGPT prompt that generates complete storylines in this
 | → / Page Down | Next inject |
 | A | Add new inject |
 | T | Toggle theme |
+| B | Cycle side-quest borders (solid / dashed / none) |
 | + / = | Zoom in |
 | - | Zoom out |
 | 0 | Reset zoom to 100% |
@@ -229,6 +251,13 @@ Save frequently-used injects for reuse across storylines. The library panel is c
 - **Drag** library injects onto a branch to add to that branch
 - **Drag** library branches onto a main storyline inject to attach
 - Click **➕** to add at the end of the storyline
+
+#### Exporting & Importing the Library
+The library has its own export/import, separate from storyline export (which does **not** include the library).
+
+- **📤 Export** downloads the entire library (injects and sidequests, images included) as `inject_library.json`
+- **📥 Import** loads a library JSON file and merges it into your current library
+- **Duplicates are skipped** automatically — items are matched by content (ignoring their IDs), so re-importing the same file adds nothing, and overlapping libraries only bring in the new items. Imported items receive fresh IDs. A summary shows how many were added vs. skipped.
 
 ## Project Structure
 
@@ -300,6 +329,7 @@ storyteller/
 |--------|----------|-------------|
 | GET | `/api/library` | List library items |
 | POST | `/api/library` | Add to library |
+| POST | `/api/library/import` | Import library items (skips duplicates) |
 | POST | `/api/library/<id>/add-to-storyline` | Add library inject to storyline |
 | POST | `/api/library/<id>/add-to-branch` | Add library inject to branch |
 

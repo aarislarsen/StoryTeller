@@ -2,11 +2,63 @@
 
 import uuid
 import time
+import json
 import base64
 from functools import wraps
 from flask import render_template, request, jsonify, session, redirect, url_for, current_app
 
 from data import app_data, save_data
+
+
+def cascade_remove_branches(storyline, removed_inject_ids):
+    """Recursively remove any branch whose parent inject no longer exists.
+
+    When an inject is deleted, branches hanging off it are orphaned; those
+    branches' own injects may in turn parent deeper sub-branches. Walk the chain
+    until no more orphans remain. Mutates the storyline in place.
+    """
+    branches = storyline.get('branches', [])
+    active = storyline.get('active_branches', [])
+    pending = set(removed_inject_ids)
+    while pending:
+        orphans = [b for b in branches if b.get('parent_inject_id') in pending]
+        if not orphans:
+            break
+        pending = set()
+        for b in orphans:
+            branches.remove(b)
+            if b['id'] in active:
+                active.remove(b['id'])
+            for inj in b.get('injects', []):
+                pending.add(inj['id'])
+    storyline['branches'] = branches
+    storyline['active_branches'] = active
+
+
+def _strip_ids(obj):
+    """Recursively copy a value with every 'id' key removed — used to compare
+    library items by content, ignoring their unique ids."""
+    if isinstance(obj, dict):
+        return {k: _strip_ids(v) for k, v in obj.items() if k != 'id'}
+    if isinstance(obj, list):
+        return [_strip_ids(x) for x in obj]
+    return obj
+
+
+def library_signature(item):
+    """A stable content signature for a library item (ids ignored)."""
+    return json.dumps(_strip_ids(item), sort_keys=True)
+
+
+def reassign_library_ids(item):
+    """Deep-copy a library item with fresh ids (item and any branch injects) so
+    imported items never collide with existing ones."""
+    new = json.loads(json.dumps(item))
+    new['id'] = str(uuid.uuid4())
+    for inj in new.get('injects', []) or []:
+        if isinstance(inj, dict):
+            inj['id'] = str(uuid.uuid4())
+    return new
 
 
 def file_to_data_uri(file):
@@ -472,12 +524,15 @@ def register_routes(app, socketio=None):
             return jsonify(block)
 
         elif request.method == 'DELETE':
-            blocks.pop(block_idx)
-            
+            removed = blocks.pop(block_idx)
+
             # Adjust current inject index if needed
             current = app_data['storylines'][storyline_id].get('current_block', 0)
             if current >= len(blocks):
                 app_data['storylines'][storyline_id]['current_block'] = max(0, len(blocks) - 1)
+
+            # Drop any (nested) branches that hung off this inject.
+            cascade_remove_branches(app_data['storylines'][storyline_id], [removed['id']])
 
             save_data(app_data)
             notify('storyline_changed')
@@ -604,7 +659,9 @@ def register_routes(app, socketio=None):
             if branch_id in storyline.get('active_branches', []):
                 storyline['active_branches'].remove(branch_id)
 
-            branches.pop(branch_idx)
+            removed = branches.pop(branch_idx)
+            # Drop any sub-branches nested under this branch's injects.
+            cascade_remove_branches(storyline, [inj['id'] for inj in removed.get('injects', [])])
             save_data(app_data)
             notify('storyline_changed')
             return jsonify({'success': True})
@@ -737,10 +794,13 @@ def register_routes(app, socketio=None):
             return jsonify(inject)
 
         elif request.method == 'DELETE':
-            injects.pop(inject_idx)
+            removed_inject = injects.pop(inject_idx)
 
             if branch['current_inject'] >= len(injects):
                 branch['current_inject'] = max(0, len(injects) - 1)
+
+            # Drop any sub-branches that hung off the deleted inject.
+            cascade_remove_branches(storyline, [removed_inject['id']])
 
             save_data(app_data)
             notify('storyline_changed')
@@ -935,7 +995,50 @@ def register_routes(app, socketio=None):
         save_data(app_data)
         notify('library_changed')
         return jsonify(library_inject)
-    
+
+    @app.route('/api/library/import', methods=['POST'])
+    @require_gm
+    def import_library():
+        """Merge library items from an exported file, skipping duplicates
+        (matched by content, ignoring ids). Imported items get fresh ids."""
+        data = request.get_json(silent=True)
+        if isinstance(data, list):
+            items = data
+        elif isinstance(data, dict):
+            items = data.get('inject_library') or data.get('library') or []
+        else:
+            items = None
+
+        if not isinstance(items, list):
+            return jsonify({'error': 'No library items found in file'}), 400
+
+        if 'inject_library' not in app_data:
+            app_data['inject_library'] = []
+
+        existing_sigs = {library_signature(it) for it in app_data['inject_library']}
+        added = 0
+        skipped = 0
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            sig = library_signature(item)
+            if sig in existing_sigs:
+                skipped += 1
+                continue
+            app_data['inject_library'].append(reassign_library_ids(item))
+            existing_sigs.add(sig)
+            added += 1
+
+        if added:
+            save_data(app_data)
+            notify('library_changed')
+        return jsonify({
+            'success': True,
+            'added': added,
+            'skipped': skipped,
+            'library': app_data['inject_library']
+        })
+
     @app.route('/api/library/<inject_id>', methods=['GET', 'POST', 'DELETE'])
     @require_gm
     def library_inject(inject_id):

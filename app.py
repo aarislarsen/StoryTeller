@@ -6,6 +6,13 @@ Run with: python app.py [--password <gm_password>]
 
 import subprocess
 import sys
+import warnings
+
+# Eventlet is imported below (and again by flask-socketio); silence its
+# "Eventlet is deprecated" DeprecationWarning so startup output stays clean.
+# Matched by message because eventlet raises it with stacklevel pointing here.
+warnings.filterwarnings('ignore', category=DeprecationWarning,
+                        message=r'(?s)^\s*Eventlet is deprecated')
 
 # Dependency check - install missing packages before importing them
 REQUIRED = {

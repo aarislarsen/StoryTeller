@@ -490,29 +490,197 @@ function renderStoryline(id) {
                 newWrapper.scrollLeft = scrollLeft;
             }
             
+            // Size branch columns to their real (measured) content before
+            // wiring drag & scrollbars, so nested side quests don't overflow.
+            fitBranchColumns();
+
+            // Draw each branch's connector from its parent card to its first card.
+            fitBranchConnectors();
+
             initSortable();
-            
+
             // Apply current highlighting after render
             highlightCurrentlyDisplayed(idx, currentDisplaySource, currentDisplayBranchId, currentDisplayBranchInjectIdx);
+
+            // Re-evaluate scrollbars for the new content so adding/removing a
+            // side quest doesn't leave a pointless scrollbar behind.
+            updateScrollbarVisibility();
         });
+}
+
+// After the storyline is in the DOM, measure each top-level branch's real
+// rendered width (including nested sub-branches, which the build-time estimate
+// can't know) and widen its main-storyline column + branch slots to match. This
+// keeps the above/below branch rows column-aligned with the main row and stops
+// a branch box from overflowing (which showed an inner scrollbar).
+function fitBranchColumns() {
+    const layout = document.getElementById('blocksContainer');
+    if (!layout) return;
+    const mainRow = layout.querySelector('.main-storyline-row');
+    if (!mainRow) return;
+    const aboveRow = layout.querySelector('.branches-above');
+    const belowRow = layout.querySelector('.branches-below');
+    const rows = [aboveRow, belowRow].filter(Boolean);
+    const PAD = 8; // small slack (offsetWidth already includes padding + border)
+
+    const mainItems = [...mainRow.querySelectorAll(':scope > .main-block-with-connector, :scope > .main-block-item')];
+    mainItems.forEach(item => {
+        const blockId = item.querySelector('.block-card')?.dataset.id;
+        if (!blockId) return;
+
+        // Widest branch (above or below) attached to this inject. Measure with
+        // the group free to take its natural width so nested sub-branch headers
+        // and cards report their true size, then restore.
+        let branchWidth = 0;
+        rows.forEach(row => {
+            const slot = row.querySelector(`.branch-slot[data-parent-id="${blockId}"]`);
+            if (!slot) return;
+            // An inject may carry several branches (stacked) — fit the widest.
+            slot.querySelectorAll(':scope > .branch-group').forEach(group => {
+                const prev = group.style.width;
+                group.style.width = 'max-content';
+                const natural = group.offsetWidth;
+                group.style.width = prev;
+                branchWidth = Math.max(branchWidth, natural + PAD);
+            });
+        });
+
+        const width = Math.max(220, branchWidth);
+        item.style.width = width + 'px';
+        const connector = item.querySelector('.connector-horizontal');
+        if (connector) connector.style.width = Math.max(0, width - 220) + 'px';
+        rows.forEach(row => {
+            const slot = row.querySelector(`.branch-slot[data-parent-id="${blockId}"]`);
+            if (slot) slot.style.width = width + 'px';
+        });
+    });
+
+    // Second pass (after all widths are set): stretch each horizontal connector
+    // so it reaches the NEXT inject card instead of stopping at its own column
+    // edge, closing the inter-inject gap. The card is flex-shrink:0, so the
+    // connector simply overflows into the row gap without disturbing layout.
+    const zoom = zoomLevel || 1;
+    mainItems.forEach(item => {
+        const connector = item.querySelector(':scope > .connector-horizontal');
+        if (!connector) return;
+        const next = item.nextElementSibling;
+        const nextCard = next && (next.matches('.add-block-card') ? next : next.querySelector('.block-card'));
+        if (!nextCard) return;
+        const c = connector.getBoundingClientRect();
+        const n = nextCard.getBoundingClientRect();
+        const w = (n.left - c.left) / zoom;
+        if (w > 0) connector.style.width = w + 'px';
+    });
+
+    // Same for the horizontal connectors between injects INSIDE side-quests.
+    document.querySelectorAll('.branch-connector-h').forEach(connector => {
+        const col = connector.closest('.branch-inject-col');
+        const nextCol = col && col.nextElementSibling;
+        if (!nextCol) return;
+        const nextCard = nextCol.matches('.add-branch-inject')
+            ? nextCol
+            : nextCol.querySelector(':scope > .branch-card-band > .branch-block-card');
+        if (!nextCard) return;
+        const c = connector.getBoundingClientRect();
+        const n = nextCard.getBoundingClientRect();
+        const w = (n.left - c.left) / zoom;
+        if (w > 0) connector.style.width = w + 'px';
+    });
+}
+
+// Draw each branch's vertical connector as a short stub bridging the gap from
+// the parent inject card (a main inject for a top-level side quest, or a branch
+// inject for a nested one) to the edge of that branch's box — no more. Sized
+// here in unscaled units (/zoom).
+function fitBranchConnectors() {
+    const zoom = zoomLevel || 1;
+    const storyline = storylinesData[currentStoryline];
+    if (!storyline) return;
+    const byId = {};
+    (storyline.branches || []).forEach(b => { byId[b.id] = b; });
+
+    document.querySelectorAll('.branch-connector-v').forEach(conn => {
+        const group = conn.nextElementSibling;         // the branch this belongs to
+        const cont = conn.parentElement;               // positioning context
+        const branch = byId[conn.dataset.for];
+        const parentCard = branch && document.querySelector(`.block-card[data-id="${branch.parent_inject_id}"]`);
+        if (!cont || !parentCard || !group || !group.classList.contains('branch-group')) { conn.style.display = 'none'; return; }
+        conn.style.display = '';
+
+        const cr = cont.getBoundingClientRect();
+        const pc = parentCard.getBoundingClientRect();
+        const g = group.getBoundingClientRect();
+        const below = pc.top <= g.top; // branches sit below the card?
+
+        // When an inject has several side quests they stack in one slot. Connect
+        // each to the ADJACENT box on the card side (or the card for the nearest
+        // one) so a connector only ever spans an empty gap — never crossing
+        // through another side-quest box.
+        let neighbor = null;
+        if (below) {
+            let el = conn.previousElementSibling;
+            while (el && !el.classList.contains('branch-group')) el = el.previousElementSibling;
+            neighbor = el;
+        } else {
+            let el = group.nextElementSibling;
+            while (el && !el.classList.contains('branch-group')) el = el.nextElementSibling;
+            neighbor = el;
+        }
+        const src = neighbor ? neighbor.getBoundingClientRect() : pc;
+
+        const topPx = below ? src.bottom : g.bottom;
+        const botPx = below ? g.top : src.top;
+
+        conn.style.top = (topPx - cr.top) / zoom + 'px';
+        conn.style.height = Math.max(0, (botPx - topPx) / zoom) + 'px';
+        // Center the line under the parent card, regardless of any offset.
+        conn.style.left = ((pc.left + pc.width / 2 - cr.left) / zoom - 1.5) + 'px';
+    });
+}
+
+// Recursively measure how wide a branch (including any nested sub-branches)
+// needs to be, so the main row can reserve horizontal space above/below.
+function branchSubtreeWidth(branch, branches) {
+    const injects = branch.injects || [];
+    let total = 0;
+    injects.forEach(inj => {
+        // 220 card + 2px border + 12px flex gap = 234 actual laid-out width.
+        let colWidth = 234;
+        const children = branches.filter(b => b.parent_inject_id === inj.id);
+        if (children.length > 0) {
+            // Children stack vertically under the inject; the column is as wide
+            // as the widest child subtree (plus indent), or the card.
+            let childMax = 0;
+            children.forEach(c => {
+                childMax = Math.max(childMax, branchSubtreeWidth(c, branches));
+            });
+            colWidth = Math.max(colWidth, childMax + 40);
+        }
+        total += colWidth;
+    });
+    // add button (84) + branch-group padding (20) + a few px slack so the
+    // .branch-injects-row never overflows its own box by a hair (which would
+    // otherwise show an inner horizontal scrollbar).
+    total += 120;
+    return Math.max(234, total);
 }
 
 function buildStorylineHTML(data, blocks, currentIdx) {
     const branches = data.branches || [];
     const activeBranches = data.active_branches || [];
-    
+
     // Determine which main inject is "now playing" (only if source is main)
     const mainNowPlaying = currentDisplaySource === 'main' ? currentIdx : -1;
-    
-    // First pass: calculate width for each block position
+
+    // First pass: calculate width for each block position. Only TOP-LEVEL
+    // branches (parent is a main block) get a slot here; nested sub-branches are
+    // rendered inside their parent branch and measured via branchSubtreeWidth.
     const itemWidths = blocks.map((block, i) => {
         const attachedBranches = branches.filter(b => b.parent_inject_id === block.id);
         if (attachedBranches.length > 0) {
             let maxBranchWidth = 0;
             attachedBranches.forEach(branch => {
-                const numInjects = (branch.injects || []).length + 1; // +1 for add button
-                const branchWidth = numInjects * 232 + 100; // cards + padding
-                maxBranchWidth = Math.max(maxBranchWidth, branchWidth);
+                maxBranchWidth = Math.max(maxBranchWidth, branchSubtreeWidth(branch, branches));
             });
             return Math.max(220, maxBranchWidth);
         }
@@ -548,12 +716,19 @@ function buildStorylineHTML(data, blocks, currentIdx) {
     
     // Check if we need branch rows at all
     const hasBranches = branches.length > 0;
-    
+    // Only render a branch row (above/below) that actually holds branches, so an
+    // unused row doesn't reserve ~45px of dead vertical space and trip a scrollbar.
+    let hasAboveBranches = false;
+    let hasBelowBranches = false;
+
     if (hasBranches) {
         blocks.forEach((block, i) => {
             const attachedBranches = branches.filter(b => b.parent_inject_id === block.id);
             const showAbove = (i % 2 === 1);
             const itemWidth = itemWidths[i];
+            if (attachedBranches.length > 0) {
+                if (showAbove) hasAboveBranches = true; else hasBelowBranches = true;
+            }
             
             const branchHtml = attachedBranches.length > 0 
                 ? attachedBranches.map(branch => {
@@ -592,6 +767,7 @@ function buildStorylineHTML(data, blocks, currentIdx) {
                         <button class="btn btn-sm btn-secondary" onclick="zoomIn()" title="Zoom in (+)">+</button>
                         <button class="btn btn-sm btn-secondary" onclick="zoomReset()" title="Reset zoom (0)">⊙</button>
                         <button class="btn btn-sm btn-secondary" onclick="zoomToFit()" title="Zoom to fit (F)">⊡</button>
+                        <button class="btn btn-sm btn-secondary" id="branchBorderBtn" onclick="cycleBranchBorder()" title="Side-quest borders: ${localStorage.getItem('branchBorderMode') || 'solid'} — click to change (B)">⬚</button>
                     </span>
                 </div>
                 <input type="text" class="group-name" value="${escapeHtml(data.name || 'Storyline')}" 
@@ -601,7 +777,7 @@ function buildStorylineHTML(data, blocks, currentIdx) {
             </div>
             <div class="storyline-layout-wrapper">
                 <div class="storyline-layout" id="blocksContainer" style="transform: scale(${zoomLevel}); transform-origin: top left;">
-                    ${hasBranches ? `<div class="branches-row branches-above">${aboveRowContent}</div>` : ''}
+                    ${hasAboveBranches ? `<div class="branches-row branches-above">${aboveRowContent}</div>` : ''}
                     <div class="main-storyline-row">
                         ${mainRow}
                         <div class="add-block-card" onclick="openBlockModal()">
@@ -609,73 +785,110 @@ function buildStorylineHTML(data, blocks, currentIdx) {
                             <div>Add Inject</div>
                         </div>
                     </div>
-                    ${hasBranches ? `<div class="branches-row branches-below">${belowRowContent}</div>` : ''}
+                    ${hasBelowBranches ? `<div class="branches-row branches-below">${belowRowContent}</div>` : ''}
                 </div>
             </div>
         </div>
     `;
 }
 
-function buildBranchHTML(branch, isActive) {
+function buildBranchHTML(branch, isActive, depth = 0) {
+    const storyline = storylinesData[currentStoryline];
+    const allBranches = storyline?.branches || [];
+    const activeBranches = storyline?.active_branches || [];
     const injects = branch.injects || [];
     const currentIdx = branch.current_inject || 0;
-    
-    const triggerBadge = branch.auto_trigger 
+
+    const triggerBadge = branch.auto_trigger
         ? '<span class="branch-badge auto">Auto</span>'
         : '<span class="branch-badge manual">Manual</span>';
-    
-    const playingBadge = isActive 
-        ? '<span class="branch-badge playing">Playing</span>' 
+
+    const playingBadge = isActive
+        ? '<span class="branch-badge playing">Playing</span>'
         : '';
-    
-    // Find merge target name if set
+
+    // Find merge target name if set (target may be a main block OR a branch inject)
     let mergeInfo = '';
     if (branch.merge_to_inject_id) {
-        const storyline = storylinesData[currentStoryline];
-        if (storyline) {
-            const blocks = storyline.blocks || [];
-            const targetIdx = blocks.findIndex(b => b.id === branch.merge_to_inject_id);
-            if (targetIdx >= 0) {
-                mergeInfo = `<span class="branch-badge merge">→ #${targetIdx + 1}</span>`;
-            }
+        const ref = injectRefLabel(storyline, branch.merge_to_inject_id);
+        if (ref) {
+            mergeInfo = `<span class="branch-badge merge">→ ${ref}</span>`;
         }
     }
-    
+
     // Check if this branch is the one currently being displayed
     const isBranchNowPlaying = currentDisplaySource === 'branch' && currentDisplayBranchId === branch.id;
-    
-    const injectCards = injects.map((inj, i) => {
-        const durationBadge = inj.duration > 0 
-            ? `<span class="block-duration">${inj.duration}s</span>` 
+
+    const injectCols = injects.map((inj, i) => {
+        const durationBadge = inj.duration > 0
+            ? `<span class="block-duration">${inj.duration}s</span>`
             : '';
-        
+
         const isInjectNowPlaying = isBranchNowPlaying && i === currentDisplayBranchInjectIdx;
-        const nowBadge = isInjectNowPlaying 
-            ? '<span class="now-playing-badge">▶ NOW</span>' 
+        const nowBadge = isInjectNowPlaying
+            ? '<span class="now-playing-badge">▶ NOW</span>'
             : '';
-        
-        return `
-            <div class="block-card branch-block-card ${isActive && i === currentIdx ? 'active' : ''} ${isInjectNowPlaying ? 'now-playing' : ''}" data-id="${inj.id}" data-index="${i}">
-                <div class="block-header">
-                    <span class="block-number branch-number" onclick="goToBranchInject('${branch.id}', ${i})" title="Jump to inject">#${i + 1}</span>
-                    ${durationBadge}
-                    ${nowBadge}
-                    <div class="block-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="editBranchInject('${branch.id}', '${inj.id}')">✎</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteBranchInject('${branch.id}', '${inj.id}')">✕</button>
+
+        // Sub-branches hanging off this branch inject. Alternate the side they
+        // render on (above/below the inject) by index parity, mirroring how the
+        // main storyline alternates its side quests.
+        const childBranches = allBranches.filter(b => b.parent_inject_id === inj.id);
+        const hasAutoChild = childBranches.some(b => b.auto_trigger);
+        const branchBtn = hasAutoChild
+            ? `<button class="btn btn-sm btn-secondary" disabled title="Auto-trigger sub-branch must be the only branch">⑂</button>`
+            : `<button class="btn btn-sm btn-activate" onclick="openBranchModal('${inj.id}')" title="Add sub-branch">⑂</button>`;
+
+        const showAbove = (i % 2 === 1);
+        const groupsHtml = childBranches.map(cb =>
+            buildBranchHTML(cb, activeBranches.includes(cb.id), depth + 1)
+        ).join('');
+        // Always render the children container so it can act as a drop target
+        // for reparenting a branch under this inject (even when currently empty).
+        // The vertical connector itself lives inside each sub-quest branch-group
+        // (see below) and is sized by fitBranchConnectors().
+        const childrenHtml = `<div class="branch-children ${showAbove ? 'branch-children-above' : 'branch-children-below'} ${childBranches.length ? 'has-children' : ''}" data-parent-id="${inj.id}">${groupsHtml}</div>`;
+
+        const cardHtml = `
+                <div class="block-card branch-block-card ${isActive && i === currentIdx ? 'active' : ''} ${isInjectNowPlaying ? 'now-playing' : ''}" data-id="${inj.id}" data-index="${i}">
+                    <div class="block-header">
+                        <span class="block-number branch-number" onclick="goToBranchInject('${branch.id}', ${i})" title="Jump to inject">#${i + 1}</span>
+                        ${durationBadge}
+                        ${nowBadge}
+                        <div class="block-actions">
+                            ${branchBtn}
+                            <button class="btn btn-sm btn-secondary" onclick="editBranchInject('${branch.id}', '${inj.id}')">✎</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteBranchInject('${branch.id}', '${inj.id}')">✕</button>
+                        </div>
                     </div>
-                </div>
-                <div class="block-body">
-                    <div class="block-title">${escapeHtml(inj.heading)}</div>
-                    ${inj.image ? `<img src="${inj.image}" class="block-image">` : ''}
-                    ${inj.text ? `<div class="block-text">${escapeHtml(inj.text)}</div>` : ''}
-                </div>
+                    <div class="block-body">
+                        <div class="block-title">${escapeHtml(inj.heading)}</div>
+                        ${inj.image ? `<img src="${inj.image}" class="block-image">` : ''}
+                        ${inj.text ? `<div class="block-text">${escapeHtml(inj.text)}</div>` : ''}
+                    </div>
+                </div>`;
+
+        // The card sits in a band with a horizontal connector running off its
+        // right edge when it has a sub-quest — matching the main storyline's
+        // card→side-quest connector (horizontal line + vertical stub).
+        const cardBand = `<div class="branch-card-band">${cardHtml}${childBranches.length ? '<div class="branch-connector-h"></div>' : ''}</div>`;
+
+        // Three stacked cells (above-band / card-band / below-band) so every
+        // inject card lines up on one row while its sub-branch sits above or
+        // below by parity — the same banded look as the main storyline.
+        return `
+            <div class="branch-inject-col">
+                <div class="branch-cell branch-cell-above">${showAbove ? childrenHtml : ''}</div>
+                ${cardBand}
+                <div class="branch-cell branch-cell-below">${showAbove ? '' : childrenHtml}</div>
             </div>
         `;
     }).join('');
-    
+
+    // The connector is a SIBLING before the group (not a child) so it paints
+    // behind the group's border, background and text instead of over them.
     return `
-        <div class="branch-group ${isActive ? 'active' : ''}" data-branch-id="${branch.id}">
+        <div class="branch-connector-v" data-for="${branch.id}"></div>
+        <div class="branch-group ${isActive ? 'active' : ''} ${depth > 0 ? 'branch-group-nested' : ''}" data-branch-id="${branch.id}" data-depth="${depth}">
             <div class="branch-header">
                 <input type="text" class="branch-name" value="${escapeHtml(branch.name)}"
                        onblur="renameBranch('${branch.id}', this.value)"
@@ -684,7 +897,7 @@ function buildBranchHTML(branch, isActive) {
                 ${mergeInfo}
                 ${playingBadge}
                 <div class="branch-controls">
-                    ${isActive 
+                    ${isActive
                         ? `<button class="btn btn-sm btn-secondary" onclick="deactivateBranch('${branch.id}')">⏹ Stop</button>`
                         : `<button class="btn btn-sm btn-activate" onclick="activateBranch('${branch.id}')">▶ Start</button>`
                     }
@@ -693,7 +906,7 @@ function buildBranchHTML(branch, isActive) {
                 </div>
             </div>
             <div class="branch-injects-row">
-                ${injectCards}
+                ${injectCols}
                 <div class="add-branch-inject" onclick="openBranchInjectModal('${branch.id}')">
                     <div>+</div>
                     <div>Add</div>
@@ -701,6 +914,53 @@ function buildBranchHTML(branch, isActive) {
             </div>
         </div>
     `;
+}
+
+// Human-readable reference for any inject anywhere in a storyline.
+// Main block -> "#3". Branch inject -> "#3-2". Nested -> "#3-2-1".
+function injectRefLabel(storyline, injectId) {
+    if (!storyline || !injectId) return '';
+    const blocks = storyline.blocks || [];
+    const mainIdx = blocks.findIndex(b => b.id === injectId);
+    if (mainIdx >= 0) return `#${mainIdx + 1}`;
+
+    const branches = storyline.branches || [];
+    for (const branch of branches) {
+        const idx = (branch.injects || []).findIndex(inj => inj.id === injectId);
+        if (idx >= 0) {
+            const parentRef = injectRefLabel(storyline, branch.parent_inject_id);
+            return parentRef ? `${parentRef}-${idx + 1}` : `#?-${idx + 1}`;
+        }
+    }
+    return '';
+}
+
+// Flat list of every inject in a storyline, each with a path ref + heading.
+// Used to populate the "merge target" picker (merge can target any inject).
+function enumerateAllInjects(storyline) {
+    const out = [];
+    (storyline.blocks || []).forEach((b, i) => {
+        out.push({ id: b.id, label: `#${i + 1}: ${b.heading || '(untitled)'}` });
+    });
+    (storyline.branches || []).forEach(branch => {
+        (branch.injects || []).forEach(inj => {
+            const ref = injectRefLabel(storyline, inj.id);
+            out.push({ id: inj.id, label: `${ref} (${branch.name}): ${inj.heading || '(untitled)'}` });
+        });
+    });
+    return out;
+}
+
+// True if injectId lives inside branchId or any of its descendant branches.
+// Used to reject dropping a branch into its own subtree (which would loop).
+function injectInBranchSubtree(storyline, branchId, injectId) {
+    const branch = (storyline.branches || []).find(b => b.id === branchId);
+    if (!branch) return false;
+    const injects = branch.injects || [];
+    if (injects.some(i => i.id === injectId)) return true;
+    const injectIds = new Set(injects.map(i => i.id));
+    const childBranches = (storyline.branches || []).filter(cb => injectIds.has(cb.parent_inject_id));
+    return childBranches.some(cb => injectInBranchSubtree(storyline, cb.id, injectId));
 }
 
 function buildBlockCard(block, index, isActive, hasBranch = false, isNowPlaying = false, hasAutoTriggerBranch = false) {
@@ -788,13 +1048,14 @@ function initSortable() {
             animation: 150,
             ghostClass: 'dragging',
             filter: '.add-branch-inject',
-            draggable: '.branch-block-card',
+            draggable: '.branch-inject-col',
             group: { name: `branch-${branchId}`, pull: false, put: false }, // Prevent cross-branch dragging
             onEnd: (evt) => {
                 // Only process if item stayed in same container
                 if (evt.from !== evt.to) return;
-                
-                const ids = [...branchRow.querySelectorAll('.branch-block-card')].map(e => e.dataset.id).filter(Boolean);
+
+                // Only DIRECT injects of this branch (exclude nested sub-branch cards)
+                const ids = [...branchRow.querySelectorAll(':scope > .branch-inject-col > .branch-card-band > .branch-block-card')].map(e => e.dataset.id).filter(Boolean);
                 fetch(`/api/branches/${currentStoryline}/${branchId}/reorder`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -804,33 +1065,48 @@ function initSortable() {
         });
     });
     
-    // Branch groups can be dragged to different parent injects
-    const branchSlots = document.querySelectorAll('.branch-slot');
-    branchSlots.forEach(slot => {
-        // Destroy existing sortable if any
-        if (slot.sortable) {
-            slot.sortable.destroy();
+    // Branch groups can be dragged to a different parent inject — both onto a
+    // main inject (top-level .branch-slot) and onto a branch inject to nest it
+    // (.branch-children). All share one Sortable group so a branch can move
+    // freely between any level.
+    const dropZones = [
+        ...document.querySelectorAll('.branch-slot'),
+        ...document.querySelectorAll('.branch-children'),
+    ];
+    dropZones.forEach(zone => {
+        if (zone.sortable) {
+            zone.sortable.destroy();
         }
-        
-        slot.sortable = new Sortable(slot, {
+
+        zone.sortable = new Sortable(zone, {
             animation: 150,
-            group: { 
-                name: 'branch-slots', 
-                pull: true, 
-                put: (to) => {
-                    // Only allow drop if target slot is empty (no branch-group inside)
-                    return to.el.querySelectorAll('.branch-group').length === 0;
+            // Larger empty-insert distance so it's easy to drop into a zone
+            // (and thus target the intended card) without pixel-perfect aim.
+            emptyInsertThreshold: 28,
+            group: {
+                name: 'branch-slots',
+                pull: true,
+                put: (to, from, dragEl) => {
+                    const draggedBranchId = dragEl.dataset.branchId;
+                    const targetParentId = to.el.dataset.parentId;
+                    if (!draggedBranchId || !targetParentId) return false;
+                    // Don't drop a branch into its own subtree (would orphan/loop).
+                    const storyline = storylinesData[currentStoryline];
+                    if (storyline && injectInBranchSubtree(storyline, draggedBranchId, targetParentId)) {
+                        return false;
+                    }
+                    return true;
                 }
             },
             ghostClass: 'dragging',
             draggable: '.branch-group',
+            // Only the branch-group directly in THIS zone is draggable from here,
+            // not sub-branches nested deeper inside it.
+            onStart: () => document.body.classList.add('branch-dragging'),
+            onEnd: () => document.body.classList.remove('branch-dragging'),
             onAdd: (evt) => {
-                // Branch was moved to a new slot
-                const branchGroup = evt.item;
-                const branchId = branchGroup.dataset.branchId;
-                const newSlot = evt.to;
-                const newParentId = newSlot.dataset.parentId;
-                
+                const branchId = evt.item.dataset.branchId;
+                const newParentId = evt.to.dataset.parentId;
                 if (branchId && newParentId) {
                     fetch(`/api/branches/${currentStoryline}/${branchId}`, {
                         method: 'PUT',
@@ -871,30 +1147,35 @@ function zoomToFit() {
     
     // Temporarily reset zoom to measure actual content size
     container.style.transform = 'scale(1)';
-    
+
     // Get the actual content dimensions at 100% zoom
     const contentHeight = container.scrollHeight;
     const contentWidth = container.scrollWidth;
-    
+
     // Get the available space in the wrapper
     const availableHeight = wrapper.clientHeight - 20; // Account for padding
     const availableWidth = wrapper.clientWidth - 20;
-    
-    // Calculate the zoom level needed to fit height (prioritize height fitting)
-    let newZoom = 1.0;
-    if (contentHeight > availableHeight) {
-        newZoom = availableHeight / contentHeight;
+
+    // Zoom needed to fit the content height into the given space.
+    const fitFor = (availH) => contentHeight > availH ? availH / contentHeight : 1.0;
+    let newZoom = fitFor(availableHeight);
+    // If the content is still wider than the viewport at that zoom, a horizontal
+    // scrollbar will appear and eat some height — reserve room for it.
+    if (contentWidth * newZoom > availableWidth) {
+        newZoom = fitFor(availableHeight - 16);
     }
-    
-    // Clamp to valid zoom range
+
+    // Clamp, then FLOOR (never round up, or the last row is pushed out of view).
     newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
-    newZoom = Math.round(newZoom * 10) / 10; // Round to 1 decimal
-    
+    newZoom = Math.floor(newZoom * 100) / 100;
+
     setZoom(newZoom);
 }
 
 function setZoom(level) {
-    zoomLevel = Math.round(level * 10) / 10; // Round to 1 decimal
+    // Round to 2 decimals so zoom-to-fit's precise value survives (manual zoom
+    // still steps in clean 0.1 increments).
+    zoomLevel = Math.round(level * 100) / 100;
     localStorage.setItem('gmZoomLevel', zoomLevel);
     
     const container = document.getElementById('blocksContainer');
@@ -914,22 +1195,31 @@ function setZoom(level) {
 function updateScrollbarVisibility() {
     const wrapper = document.querySelector('.storyline-layout-wrapper');
     const container = document.getElementById('blocksContainer');
-    
+
     if (!wrapper || !container) return;
-    
-    // Get the scaled content dimensions
+
+    // Measure the available space with scrollbars hidden. A scrollbar that is
+    // already showing eats ~15px of the wrapper's client size, and measuring
+    // against that shrunken size keeps re-triggering the scrollbar even when the
+    // content would actually fit — the "phantom scrollbar" the GM sees when a
+    // side quest is added. Hiding both axes first breaks that feedback loop.
+    wrapper.style.overflowX = 'hidden';
+    wrapper.style.overflowY = 'hidden';
+
+    // Scaled content dimensions.
     const scaledHeight = container.scrollHeight * zoomLevel;
     const scaledWidth = container.scrollWidth * zoomLevel;
-    
-    // Get the available space
+
+    // Full available space (no scrollbar consuming it right now).
     const availableHeight = wrapper.clientHeight;
     const availableWidth = wrapper.clientWidth;
-    
-    // Determine if scrollbars are needed
-    const needsVerticalScroll = scaledHeight > availableHeight;
-    const needsHorizontalScroll = scaledWidth > availableWidth;
-    
-    // Set overflow properties accordingly
+
+    // Ignore sub-pixel / rounding overflow so a stray couple of pixels doesn't
+    // put up a scrollbar for nothing.
+    const TOLERANCE = 2;
+    const needsVerticalScroll = scaledHeight > availableHeight + TOLERANCE;
+    const needsHorizontalScroll = scaledWidth > availableWidth + TOLERANCE;
+
     wrapper.style.overflowY = needsVerticalScroll ? 'auto' : 'hidden';
     wrapper.style.overflowX = needsHorizontalScroll ? 'auto' : 'hidden';
 }
@@ -962,7 +1252,8 @@ function highlightCurrentlyDisplayed(mainIdx, source, branchId, branchInjectIdx)
         const idx = (source === 'branch' && branch.id === branchId)
             ? branchInjectIdx
             : (branch.current_inject || 0);
-        const card = group.querySelector(`.block-card[data-index="${idx}"]`);
+        // Scope to THIS branch's own injects, not cards in nested sub-branches.
+        const card = group.querySelector(`:scope > .branch-injects-row > .branch-inject-col > .branch-card-band > .block-card[data-index="${idx}"]`);
         if (card) card.classList.add('active');
     });
 
@@ -971,7 +1262,7 @@ function highlightCurrentlyDisplayed(mainIdx, source, branchId, branchInjectIdx)
     if (source === 'branch' && branchId != null) {
         const group = document.querySelector(`.branch-group[data-branch-id="${branchId}"]`);
         target = group
-            ? group.querySelector(`.block-card[data-index="${branchInjectIdx}"]`)
+            ? group.querySelector(`:scope > .branch-injects-row > .branch-inject-col > .branch-card-band > .block-card[data-index="${branchInjectIdx}"]`)
             : null;
     }
 
@@ -1401,23 +1692,22 @@ function openBranchModal(parentInjectId, branchData = null) {
         saveToLibraryBtn.style.display = 'none';
     }
     
-    // Populate merge target dropdown with injects after the parent inject
+    // Populate merge target dropdown. A branch may merge to ANY inject in the
+    // storyline (main or another branch), except its own injects (self-loop).
     const mergeSelect = document.getElementById('branchMergeTarget');
     mergeSelect.innerHTML = '<option value="">-- Continue after branch (no skip) --</option>';
-    
-    if (storyline && storyline.blocks) {
-        const parentIdx = storyline.blocks.findIndex(b => b.id === parentInjectId);
-        storyline.blocks.forEach((block, i) => {
-            // Only show injects after the parent inject as merge targets
-            if (i > parentIdx) {
-                const opt = document.createElement('option');
-                opt.value = block.id;
-                opt.textContent = `#${i + 1}: ${block.heading}`;
-                if (branchData?.merge_to_inject_id === block.id) {
-                    opt.selected = true;
-                }
-                mergeSelect.appendChild(opt);
+
+    if (storyline) {
+        const ownInjectIds = new Set((branchData?.injects || []).map(inj => inj.id));
+        enumerateAllInjects(storyline).forEach(({ id, label }) => {
+            if (ownInjectIds.has(id)) return; // can't merge into itself
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = label;
+            if (branchData?.merge_to_inject_id === id) {
+                opt.selected = true;
             }
+            mergeSelect.appendChild(opt);
         });
     }
     
@@ -1676,7 +1966,11 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 't' || e.key === 'T') {
         toggleTheme();
     }
-    
+
+    if (e.key === 'b' || e.key === 'B') {
+        cycleBranchBorder();
+    }
+
     // Zoom shortcuts
     if (e.key === '+' || e.key === '=') {
         zoomIn();
@@ -1734,6 +2028,30 @@ function toggleTheme() {
 // Load saved theme on startup (old 'dark'/'light' values still valid)
 (function initTheme() {
     applyTheme(localStorage.getItem('gmTheme') || 'dark');
+})();
+
+// ============ Side-quest border style ============
+// Cycle the side-quest (branch) box borders: solid -> dashed -> none.
+const BRANCH_BORDER_MODES = ['solid', 'dashed', 'none'];
+
+function applyBranchBorderMode(mode) {
+    if (!BRANCH_BORDER_MODES.includes(mode)) mode = 'solid';
+    document.body.classList.remove('branch-border-dashed', 'branch-border-none');
+    if (mode === 'dashed') document.body.classList.add('branch-border-dashed');
+    else if (mode === 'none') document.body.classList.add('branch-border-none');
+    localStorage.setItem('branchBorderMode', mode);
+    const btn = document.getElementById('branchBorderBtn');
+    if (btn) btn.title = `Side-quest borders: ${mode} — click to change (B)`;
+}
+
+function cycleBranchBorder() {
+    const current = localStorage.getItem('branchBorderMode') || 'solid';
+    const idx = BRANCH_BORDER_MODES.indexOf(current);
+    applyBranchBorderMode(BRANCH_BORDER_MODES[(idx + 1) % BRANCH_BORDER_MODES.length]);
+}
+
+(function initBranchBorder() {
+    applyBranchBorderMode(localStorage.getItem('branchBorderMode') || 'solid');
 })();
 
 // ============ Help Modal ============
@@ -1982,6 +2300,64 @@ function loadLibrary() {
             renderLibrary();
             updateLibraryState();
         });
+}
+
+// Export the whole inject library to a JSON file (import-compatible format).
+function exportLibrary() {
+    if (!libraryInjects || libraryInjects.length === 0) {
+        showAlert('The library is empty — nothing to export.', 'Empty Library');
+        return;
+    }
+    const blob = new Blob([JSON.stringify({ inject_library: libraryInjects }, null, 2)],
+        { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inject_library.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Import a library JSON file, merging in new items and skipping duplicates.
+function importLibrary() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            let data;
+            try {
+                data = JSON.parse(reader.result);
+            } catch (e) {
+                showAlert('That file is not valid JSON.', 'Import Failed');
+                return;
+            }
+            fetch('/api/library/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.error) {
+                        showAlert(res.error, 'Import Failed');
+                        return;
+                    }
+                    loadLibrary();
+                    showAlert(`Imported ${res.added} item${res.added === 1 ? '' : 's'}. ` +
+                        `Skipped ${res.skipped} duplicate${res.skipped === 1 ? '' : 's'}.`,
+                        'Library Imported');
+                })
+                .catch(() => showAlert('Import failed.', 'Error'));
+        };
+        reader.readAsText(file);
+    };
+    input.click();
 }
 
 function renderLibrary() {
@@ -2834,19 +3210,15 @@ function addSessionNote() {
         const currentIdx = data.current_block || 0;
         const mainInjectNum = currentIdx + 1;
         
-        // Check if we're showing a branch inject
+        // Check if we're showing a branch inject (possibly nested)
         if (currentDisplaySource !== 'main' && currentDisplayBranchId) {
             // Find the branch
             const branch = (data.branches || []).find(b => b.id === currentDisplayBranchId);
             if (branch) {
-                // Find which main inject this branch is attached to
-                const parentInjectIdx = (data.blocks || []).findIndex(b => b.id === branch.parent_inject_id);
-                const parentInjectNum = parentInjectIdx >= 0 ? parentInjectIdx + 1 : '?';
-                const branchInjectNum = (currentDisplayBranchInjectIdx || 0) + 1;
                 const branchInject = branch.injects && branch.injects[currentDisplayBranchInjectIdx];
+                const ref = branchInject ? injectRefLabel(data, branchInject.id) : '';
                 const branchInjectHeading = branchInject ? branchInject.heading : '';
-                
-                injectName = `#${parentInjectNum}-${branchInjectNum} ${branchInjectHeading}`.trim();
+                injectName = `${ref} ${branchInjectHeading}`.trim();
             }
         } else {
             // Main storyline inject

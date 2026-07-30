@@ -610,6 +610,20 @@ h1 {
     margin-left: auto;
 }
 
+/* Group the library action buttons together on the right (Add to Library last,
+   i.e. farthest right). Overrides the per-button auto margin above so they don't
+   spread out. */
+.library-header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.library-header-actions .btn {
+    margin-left: 0;
+}
+
 .library-content {
     display: flex;
     flex-direction: row;
@@ -1715,6 +1729,12 @@ textarea.form-input {
     min-height: 40px;
     border-radius: 6px;
     transition: background 0.2s;
+    position: relative; /* positioning context for the branch connector */
+    /* Stack multiple side quests with a gap so the chained connectors between
+       them have room (the absolutely-positioned connectors don't affect flow). */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .branch-slot-empty {
@@ -1752,16 +1772,23 @@ textarea.form-input {
     cursor: grabbing;
 }
 
+/* Connector line colour — a lighter shade of the accent so it reads as distinct
+   from the branch/viewport borders (which use the accent itself) in every theme.
+   Falls back to a fixed light purple where color-mix isn't available. */
+body {
+    --connector: color-mix(in srgb, var(--accent2, #8957e5) 62%, #ffffff);
+}
+
 .connector-horizontal {
     height: 3px;
-    background: var(--accent2, #8957e5);
+    background: var(--connector, #b48bf0);
     flex-shrink: 0;
 }
 
 .connector-vertical {
     position: absolute;
     width: 3px;
-    background: var(--accent2, #8957e5);
+    background: var(--connector, #b48bf0);
     left: 110px;
 }
 
@@ -1804,21 +1831,19 @@ textarea.form-input {
     position: relative;
 }
 
-.branch-group::before {
-    content: '';
+/* Short vertical stub bridging the gap from the parent inject card to the edge
+   of this branch's box. Rendered as a sibling BEFORE the branch-group with a
+   negative z-index so it tucks behind the box edge. Positioned/sized by
+   fitBranchConnectors(). Colour is a distinct shade of the accent per theme. */
+.branch-connector-v {
     position: absolute;
     width: 3px;
-    height: 20px;
-    background: var(--accent2, #8957e5);
+    height: 20px; /* fallback until measured */
     left: 110px;
-}
-
-.branches-above .branch-group::before {
-    bottom: -20px;
-}
-
-.branches-below .branch-group::before {
     top: -20px;
+    background: var(--connector, #b48bf0);
+    pointer-events: none;
+    z-index: -1;
 }
 
 .branch-group.active {
@@ -1891,10 +1916,63 @@ textarea.form-input {
 }
 
 .branch-injects-row {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
+    /* Grid with three row bands (above sub-branch / inject card / below
+       sub-branch). Each inject column is a subgrid spanning all three bands so
+       the inject cards stay aligned on one line while sub-branches alternate
+       above/below — mirroring the main storyline. Sizes to content, never
+       scrolls internally; the outer viewport handles overall overflow. */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    grid-template-rows: auto auto auto;
+    column-gap: 12px;
+    overflow-x: visible;
+    width: max-content;
     padding: 4px 0;
+}
+
+.branch-inject-col {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 3;
+    justify-items: start;
+}
+
+.branch-cell-above {
+    grid-row: 1;
+    align-self: end;
+}
+
+/* Card band (inject card + horizontal connector) occupies the middle row. */
+.branch-inject-col > .branch-card-band {
+    grid-row: 2;
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    position: relative; /* positioning context for the horizontal connector */
+}
+
+/* Horizontal connector running off the card's right edge, at card mid-height.
+   Absolutely positioned (out of flow) so stretching it toward the next branch
+   inject doesn't inflate this content-sized column; width is set by JS. */
+.branch-connector-h {
+    position: absolute;
+    left: 220px; /* card right edge */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; /* set by fitBranchColumns() */
+    height: 3px;
+    background: var(--connector, #b48bf0);
+}
+
+.branch-cell-below {
+    grid-row: 3;
+    align-self: start;
+}
+
+/* The add-inject button sits in the card band of its own column. */
+.branch-injects-row > .add-branch-inject {
+    grid-row: 2;
 }
 
 .branch-block-card {
@@ -1941,6 +2019,66 @@ textarea.form-input {
     background: rgba(137, 87, 229, 0.1);
     color: var(--accent2, #a371f7);
 }
+
+/* ============ Nested sub-quests ============ */
+/* Cells that hold a branch inject's sub-branches, above or below the card. */
+.branch-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Sub-branch container. Gap between the parent card and the sub-quest box, and
+   between stacked sub-quests (room for the chained connectors between them). */
+.branch-children {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+}
+
+.branch-children-below.has-children {
+    padding-top: 20px;
+}
+
+.branch-children-above.has-children {
+    padding-bottom: 20px;
+}
+
+/* While dragging a branch, reveal empty child containers as clear, card-width
+   drop targets so it's easy to nest under the intended inject. */
+body.branch-dragging .branch-children:not(.has-children) {
+    min-width: 200px;
+    min-height: 56px;
+    margin: 8px 0;
+    border: 2px dashed var(--accent2, #8957e5);
+    border-radius: 6px;
+    background: rgba(137, 87, 229, 0.08);
+    align-items: center;
+    justify-content: center;
+}
+
+body.branch-dragging .branch-children:not(.has-children)::after {
+    content: 'Drop to nest here';
+    color: var(--accent2, #a371f7);
+    font-size: 11px;
+    pointer-events: none;
+}
+
+/* Reveal empty top-level slots (re-parent onto a main inject) during a drag. */
+body.branch-dragging .branch-slot-empty {
+    min-height: 56px;
+    border: 2px dashed rgba(137, 87, 229, 0.5);
+    border-radius: 6px;
+    background: rgba(137, 87, 229, 0.04);
+}
+
+/* Deeper branches get a progressively softer tint so nesting reads at a glance. */
+.branch-group-nested {
+    background: rgba(137, 87, 229, 0.06);
+}
+
 
 /* ============ Light Mode ============ */
 body.light-mode {
@@ -2543,9 +2681,10 @@ body.light-mode .now-playing-badge {
     background: var(--success, #22c55e);
 }
 
-body.light-mode .connector-horizontal,
-body.light-mode .branch-group::before {
-    background: #fbbf24;
+/* Light mode: a darker shade of the accent so the connector stays distinct from
+   the (lighter) borders against the light background. */
+body.light-mode {
+    --connector: color-mix(in srgb, var(--accent2, #7c3aed) 78%, #000000);
 }
 
 body.light-mode .progress-display {
@@ -2690,4 +2829,30 @@ body.theme-dnd {
 /* D&D: the highlighted inject frame glows red (not the default purple). */
 body.theme-dnd .block-card.active {
     box-shadow: 0 0 15px rgba(160, 24, 24, 0.45);
+}
+
+/* ============ Side-quest border style toggle ============ */
+/* Cycled via the ⬚ button or the B key: solid → dashed → none. Each step also
+   fades the box — dashed is more transparent, 'none' removes the box entirely
+   (transparent border keeps the 1px slot so nothing shifts) leaving just the
+   header text and cards. Placed at the end so it overrides the per-theme
+   .branch-group backgrounds/borders. */
+body.branch-border-dashed .branch-group {
+    border-style: dashed;
+    background: rgba(137, 87, 229, 0.04);
+}
+
+body.branch-border-dashed .branch-group-nested {
+    background: rgba(137, 87, 229, 0.02);
+}
+
+body.light-mode.branch-border-dashed .branch-group {
+    background: rgba(245, 158, 11, 0.035);
+}
+
+body.branch-border-none .branch-group,
+body.branch-border-none .branch-group-nested {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
 }
