@@ -120,6 +120,11 @@
                 <span class="library-title">📚 Inject Library</span>
                 <span class="library-count" id="libraryCount"></span>
                 <div class="library-header-actions">
+                    <label class="library-zoom" onclick="event.stopPropagation()" title="Resize library cards">
+                        <span class="library-zoom-icon">🔍</span>
+                        <input type="range" id="libraryZoom" min="0.7" max="1.8" step="0.05" value="1"
+                               oninput="setLibraryCardZoom(this.value)">
+                    </label>
                     <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); importLibrary()" title="Import a library JSON file (duplicates are skipped)">📥 Import</button>
                     <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); exportLibrary()" title="Export the entire library to a JSON file">📤 Export</button>
                     <button class="btn btn-sm" onclick="event.stopPropagation(); openLibraryInjectModal()">+ Add to Library</button>
@@ -132,6 +137,7 @@
                         <div class="library-empty">No injects yet. Save an inject here to reuse it.</div>
                     </div>
                 </div>
+                <div class="library-divider" id="libraryDivider" title="Drag to resize the columns"></div>
                 <div class="library-column" id="librarySidequestsColumn">
                     <div class="library-column-header">Sidequests <span class="library-column-count" id="librarySidequestsCount"></span></div>
                     <div class="library-column-cards" id="librarySidequestsCards">
@@ -139,6 +145,7 @@
                     </div>
                 </div>
             </div>
+            <div class="library-resize-handle" id="libraryResizeHandle" title="Drag to resize the library"></div>
         </div>
     </div>
     
@@ -436,6 +443,8 @@
                     <li>Save injects or branches to the library for reuse</li>
                     <li>Drag items from the library into your storyline</li>
                     <li>Library items persist across sessions</li>
+                    <li>Use the 🔍 slider in the library header to resize the cards</li>
+                    <li>Drag the top edge of the library to resize its height, and the divider to move the injects/sidequests split</li>
                     <li><strong>Export</strong> the whole library to a JSON file, and <strong>Import</strong> one back — duplicates are skipped automatically</li>
                 </ul>
                 
@@ -659,6 +668,12 @@
         <div class="inject-preview-image" id="previewImageContainer"></div>
         <div class="inject-preview-text" id="previewText"></div>
         <div class="inject-preview-gm-notes" id="previewGmNotes"></div>
+    </div>
+
+    <!-- Hover preview for a library side-quest: lists the cards inside it -->
+    <div class="inject-preview-card branch-preview-card" id="branchPreviewCard">
+        <div class="inject-preview-heading" id="branchPreviewHeading"></div>
+        <div class="branch-preview-injects" id="branchPreviewInjects"></div>
     </div>
     
     <script src="{{ url_for('static', filename='js/gm.js') }}"></script>

@@ -559,7 +559,37 @@ h1 {
     display: flex;
     flex-direction: column-reverse;
     margin-top: 15px;
-    max-height: 350px;
+}
+
+/* Drag handle at the top edge of the library to resize its height. Rendered at
+   the top thanks to the panel's column-reverse order. */
+.library-resize-handle {
+    flex-shrink: 0;
+    height: 8px;
+    cursor: ns-resize;
+    position: relative;
+    border-radius: 6px 6px 0 0;
+}
+
+.library-resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border, #30363d);
+    transition: background 0.15s;
+}
+
+.library-resize-handle:hover::after {
+    background: var(--accent2, #a371f7);
+}
+
+.library-panel.collapsed .library-resize-handle {
+    display: none;
 }
 
 .library-panel.collapsed {
@@ -629,22 +659,52 @@ h1 {
     flex-direction: row;
     align-items: stretch;
     min-height: 120px;
-    max-height: 300px;
+    height: var(--library-content-height, 260px); /* draggable via the top handle */
     overflow: hidden; /* each column scrolls on its own */
     border-radius: 6px 6px 0 0;
 }
 
-/* Split library: injects on the left, sidequests on the right */
+/* Split library: injects on the left, sidequests on the right. The injects
+   column's width is set by --library-split (moved via the divider); sidequests
+   takes the rest. */
 .library-column {
-    flex: 1 1 50%;
     min-width: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-.library-column + .library-column {
-    border-left: 1px solid var(--border, #30363d);
+#libraryInjectsColumn {
+    flex: 0 0 var(--library-split, 50%);
+}
+
+#librarySidequestsColumn {
+    flex: 1 1 0;
+}
+
+/* Draggable divider between the two library columns. */
+.library-divider {
+    flex: 0 0 7px;
+    cursor: ew-resize;
+    position: relative;
+    background: var(--border, #30363d);
+}
+
+.library-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 44px;
+    border-radius: 2px;
+    background: var(--bg-1, #161b22);
+    transition: background 0.15s;
+}
+
+.library-divider:hover::after {
+    background: var(--accent2, #a371f7);
 }
 
 .library-column-header {
@@ -696,6 +756,33 @@ h1 {
     cursor: grab;
     transition: all 0.2s;
     position: relative;
+    /* Scaled by the library zoom slider (scales size, text and image together
+       and reflows the wrapping grid). */
+    zoom: var(--lib-card-zoom, 1);
+}
+
+/* Discreet library card resize slider in the header. */
+.library-zoom {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.65;
+    cursor: pointer;
+}
+
+.library-zoom:hover {
+    opacity: 1;
+}
+
+.library-zoom-icon {
+    font-size: 12px;
+}
+
+.library-zoom input[type="range"] {
+    width: 84px;
+    height: 4px;
+    cursor: pointer;
+    accent-color: var(--accent2, #a371f7);
 }
 
 .library-card:hover {
@@ -1285,6 +1372,40 @@ h1 {
 
 .inject-preview-card.visible {
     display: block;
+}
+
+/* Library side-quest hover preview: the cards inside the side-quest, laid out
+   horizontally like they appear in the storyline. */
+.branch-preview-card {
+    max-width: min(85vw, 960px);
+    min-width: 240px;
+}
+
+.branch-preview-injects {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    max-width: min(85vw, 960px);
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.branch-preview-injects .branch-details-inject {
+    width: 190px;
+    flex-shrink: 0;
+}
+
+/* Keep long text/images from making the horizontal cards too tall. */
+.branch-preview-injects .branch-details-inject-text {
+    max-height: 96px;
+    overflow: hidden;
+}
+
+.branch-preview-injects .branch-details-inject-image {
+    max-height: 110px;
+    object-fit: cover;
 }
 
 .inject-preview-daytime {

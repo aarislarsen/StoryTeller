@@ -468,28 +468,25 @@ function showEmptyState() {
 
 // ============ Render Storyline ============
 function renderStoryline(id) {
-    // Preserve scroll position before re-render
+    // Preserve scroll position across the re-render (both axes) so adding or
+    // removing an inject doesn't jump the viewport back to the top-left. The
+    // browser clamps these if the content got smaller.
     const wrapper = document.querySelector('.storyline-layout-wrapper');
     const scrollLeft = wrapper ? wrapper.scrollLeft : 0;
-    
+    const scrollTop = wrapper ? wrapper.scrollTop : 0;
+
     return fetch('/api/storylines/' + id)
         .then(r => r.json())
         .then(data => {
             storylinesData[id] = data;
             const blocks = data.blocks || [];
             const idx = data.current_block || 0;
-            
+
             document.getElementById('totalBlocks').textContent = blocks.length;
             document.getElementById('currentBlock').textContent = idx + 1;
-            
+
             document.getElementById('mainContent').innerHTML = buildStorylineHTML(data, blocks, idx);
-            
-            // Restore scroll position immediately after render
-            const newWrapper = document.querySelector('.storyline-layout-wrapper');
-            if (newWrapper) {
-                newWrapper.scrollLeft = scrollLeft;
-            }
-            
+
             // Size branch columns to their real (measured) content before
             // wiring drag & scrollbars, so nested side quests don't overflow.
             fitBranchColumns();
@@ -505,6 +502,14 @@ function renderStoryline(id) {
             // Re-evaluate scrollbars for the new content so adding/removing a
             // side quest doesn't leave a pointless scrollbar behind.
             updateScrollbarVisibility();
+
+            // Restore the scroll position now that widths/heights are final
+            // (overflow has been set). The browser clamps to the new bounds.
+            const newWrapper = document.querySelector('.storyline-layout-wrapper');
+            if (newWrapper) {
+                newWrapper.scrollLeft = scrollLeft;
+                newWrapper.scrollTop = scrollTop;
+            }
         });
 }
 
@@ -1222,6 +1227,13 @@ function updateScrollbarVisibility() {
 
     wrapper.style.overflowY = needsVerticalScroll ? 'auto' : 'hidden';
     wrapper.style.overflowX = needsHorizontalScroll ? 'auto' : 'hidden';
+
+    // If an axis is no longer scrollable, snap it back to the start. transform:
+    // scale() doesn't shrink the layout box, so a stale scrollTop/Left would
+    // otherwise keep the content pushed out of view with no scrollbar to recover
+    // it — e.g. zoom-to-fit while scrolled down would hide the top of the story.
+    if (!needsVerticalScroll) wrapper.scrollTop = 0;
+    if (!needsHorizontalScroll) wrapper.scrollLeft = 0;
 }
 
 function highlightCurrentlyDisplayed(mainIdx, source, branchId, branchInjectIdx) {
@@ -2301,6 +2313,81 @@ function loadLibrary() {
             updateLibraryState();
         });
 }
+
+// Resize the library cards (scales size, text and images) via the header slider.
+function setLibraryCardZoom(value) {
+    const z = parseFloat(value) || 1;
+    document.documentElement.style.setProperty('--lib-card-zoom', z);
+    localStorage.setItem('libraryCardZoom', z);
+}
+
+(function initLibraryCardZoom() {
+    const saved = parseFloat(localStorage.getItem('libraryCardZoom')) || 1;
+    document.documentElement.style.setProperty('--lib-card-zoom', saved);
+    const slider = document.getElementById('libraryZoom');
+    if (slider) slider.value = saved;
+})();
+
+// Drag the top edge of the library to resize its height.
+(function initLibraryResize() {
+    const handle = document.getElementById('libraryResizeHandle');
+    const content = document.getElementById('libraryContent');
+    if (!handle || !content) return;
+
+    const saved = parseInt(localStorage.getItem('libraryContentHeight'), 10);
+    if (saved) document.documentElement.style.setProperty('--library-content-height', saved + 'px');
+
+    let startY = 0, startH = 0;
+    const onMove = (e) => {
+        const dy = startY - e.clientY; // drag up => taller (library sits at bottom)
+        const h = Math.max(120, Math.min(window.innerHeight * 0.85, startH + dy));
+        document.documentElement.style.setProperty('--library-content-height', h + 'px');
+    };
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.userSelect = '';
+        localStorage.setItem('libraryContentHeight', Math.round(content.getBoundingClientRect().height));
+    };
+    handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        startY = e.clientY;
+        startH = content.getBoundingClientRect().height;
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+})();
+
+// Drag the divider to change the injects/sidequests column split.
+(function initLibraryDivider() {
+    const divider = document.getElementById('libraryDivider');
+    const content = document.getElementById('libraryContent');
+    if (!divider || !content) return;
+
+    const saved = parseFloat(localStorage.getItem('librarySplit'));
+    if (saved) document.documentElement.style.setProperty('--library-split', saved + '%');
+
+    const onMove = (e) => {
+        const rect = content.getBoundingClientRect();
+        let pct = ((e.clientX - rect.left) / rect.width) * 100;
+        pct = Math.max(20, Math.min(80, pct));
+        document.documentElement.style.setProperty('--library-split', pct + '%');
+    };
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.userSelect = '';
+        const pct = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--library-split'));
+        if (pct) localStorage.setItem('librarySplit', pct);
+    };
+    divider.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+})();
 
 // Export the whole inject library to a JSON file (import-compatible format).
 function exportLibrary() {
@@ -3423,11 +3510,37 @@ function showInjectPreview(event, block) {
     // dimensions, then position it. Both happen in one tick — no flash, and the
     // height is now correct for the library "above the cursor" placement.
     previewCard.classList.add('visible');
-    positionPreviewCard(event);
+    positionPreviewCard(event, previewCard);
 }
 
-function positionPreviewCard(event) {
-    const previewCard = document.getElementById('injectPreviewCard');
+// Hover preview for a library side-quest: shows the cards it contains.
+function showBranchPreview(event, branch) {
+    const card = document.getElementById('branchPreviewCard');
+    if (!card || !branch) return;
+
+    document.getElementById('branchPreviewHeading').textContent = branch.name || 'Unnamed Side-Quest';
+
+    const wrap = document.getElementById('branchPreviewInjects');
+    const injects = branch.injects || [];
+    wrap.innerHTML = injects.length
+        ? injects.map((inj, i) => `
+            <div class="branch-details-inject">
+                <div class="branch-details-inject-header">
+                    <span class="branch-details-inject-number">#${i + 1}</span>
+                    <span class="branch-details-inject-title">${escapeHtml(inj.heading || 'Untitled')}</span>
+                    ${inj.duration > 0 ? `<span class="block-duration">${inj.duration}s</span>` : ''}
+                </div>
+                ${inj.image ? `<img src="${inj.image}" class="branch-details-inject-image">` : ''}
+                ${inj.text ? `<div class="branch-details-inject-text">${escapeHtml(inj.text)}</div>` : ''}
+            </div>
+        `).join('')
+        : '<div class="branch-details-empty">No injects in this side-quest</div>';
+
+    card.classList.add('visible');
+    positionPreviewCard(event, card);
+}
+
+function positionPreviewCard(event, previewCard) {
     if (!previewCard) return;
     
     const padding = 15;
@@ -3461,10 +3574,8 @@ function positionPreviewCard(event) {
 }
 
 function hideInjectPreview() {
-    const previewCard = document.getElementById('injectPreviewCard');
-    if (previewCard) {
-        previewCard.classList.remove('visible');
-    }
+    document.getElementById('injectPreviewCard')?.classList.remove('visible');
+    document.getElementById('branchPreviewCard')?.classList.remove('visible');
 }
 
 function initInjectPreviewHover() {
@@ -3485,11 +3596,14 @@ function initInjectPreviewHover() {
 
         // Check if this is a library card
         if (blockCard.classList.contains('library-card')) {
-            // Find in library data - skip branches for now
             const item = libraryInjects.find(item => item.id === blockId);
-            if (item && item.type !== 'branch') {
-                // It's an inject, not a branch
-                block = item;
+            if (item && item.type === 'branch') {
+                // Side-quest: preview the cards inside it.
+                previewTimeout = setTimeout(() => showBranchPreview(e, item), 700);
+                return;
+            }
+            if (item) {
+                block = item; // a plain library inject
             }
         } else {
             // Find in storyline data
@@ -3528,11 +3642,14 @@ function initInjectPreviewHover() {
     
     // Update position on mouse move while hovering
     document.addEventListener('mousemove', function(e) {
-        const previewCard = document.getElementById('injectPreviewCard');
-        if (previewCard && previewCard.classList.contains('visible')) {
+        const inj = document.getElementById('injectPreviewCard');
+        const br = document.getElementById('branchPreviewCard');
+        const visible = (inj && inj.classList.contains('visible')) ? inj
+            : (br && br.classList.contains('visible')) ? br : null;
+        if (visible) {
             const blockCard = e.target.closest('.block-card, .branch-block-card, .library-card');
             if (blockCard && !e.target.closest('.block-actions, .branch-actions, .library-card-actions')) {
-                positionPreviewCard(e);
+                positionPreviewCard(e, visible);
             }
         }
     });
