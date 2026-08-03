@@ -7,15 +7,38 @@
 function adjustLayoutForControlBar() {
     const controlBar = document.querySelector('.controls-bar');
     if (!controlBar) return;
-    
+
     const height = controlBar.offsetHeight;
     document.documentElement.style.setProperty('--control-bar-height', height + 'px');
     document.body.style.paddingTop = height + 'px';
+
+    // The storyline viewport height just changed — re-evaluate whether it needs
+    // scrollbars (e.g. after collapsing/expanding the top bar or a window resize).
+    updateScrollbarVisibility();
 }
 
 // Adjust on load and resize
 window.addEventListener('load', adjustLayoutForControlBar);
 window.addEventListener('resize', adjustLayoutForControlBar);
+
+// Collapse/expand the top control bar, leaving only the play/progress/nav line.
+function toggleControlsBar() {
+    const bar = document.querySelector('.controls-bar');
+    if (!bar) return;
+    const collapsed = bar.classList.toggle('collapsed');
+    localStorage.setItem('controlsBarCollapsed', collapsed);
+    const toggle = bar.querySelector('.controls-collapse-toggle');
+    if (toggle) toggle.textContent = collapsed ? '⌄' : '⌃';
+    adjustLayoutForControlBar(); // bar height changed → reflow the layout below it
+}
+
+(function initControlsBar() {
+    const bar = document.querySelector('.controls-bar');
+    if (!bar) return;
+    if (localStorage.getItem('controlsBarCollapsed') === 'true') bar.classList.add('collapsed');
+    const toggle = bar.querySelector('.controls-collapse-toggle');
+    if (toggle) toggle.textContent = bar.classList.contains('collapsed') ? '⌄' : '⌃';
+})();
 
 // Also adjust after fonts load (can change heights)
 document.fonts?.ready?.then(adjustLayoutForControlBar);
@@ -1190,8 +1213,17 @@ function zoomToFit() {
     // height, so this mainly recenters horizontally.
     if (oldZoom > 0) {
         const ratio = newZoom / oldZoom;
-        wrapper.scrollLeft = (preLeft + preClientW / 2) * ratio - wrapper.clientWidth / 2;
-        wrapper.scrollTop = (preTop + preClientH / 2) * ratio - wrapper.clientHeight / 2;
+        const targetLeft = (preLeft + preClientW / 2) * ratio - wrapper.clientWidth / 2;
+        const targetTop = (preTop + preClientH / 2) * ratio - wrapper.clientHeight / 2;
+        // Clamp to the VISUAL scrollable range (scaled content size), not the
+        // layout box. transform:scale() leaves the layout box tall, so an
+        // un-clamped scrollTop would push the now-fitted content off the top
+        // with overflowY hidden and no scrollbar to recover it. After a fit the
+        // content fits vertically, so this pins scrollTop to 0 (top visible).
+        const maxLeft = Math.max(0, contentWidth * newZoom - wrapper.clientWidth);
+        const maxTop = Math.max(0, contentHeight * newZoom - wrapper.clientHeight);
+        wrapper.scrollLeft = Math.min(maxLeft, Math.max(0, targetLeft));
+        wrapper.scrollTop = Math.min(maxTop, Math.max(0, targetTop));
     }
 }
 
@@ -2018,6 +2050,18 @@ document.addEventListener('keydown', (e) => {
         cycleBranchBorder();
     }
 
+    if (e.key === 'n' || e.key === 'N') {
+        toggleSidePanels();
+    }
+
+    if (e.key === 'h' || e.key === 'H') {
+        toggleControlsBar();
+    }
+
+    if (e.key === 'l' || e.key === 'L') {
+        toggleLibrary();
+    }
+
     // Zoom shortcuts
     if (e.key === '+' || e.key === '=') {
         zoomIn();
@@ -2048,15 +2092,17 @@ document.addEventListener('keydown', (e) => {
 // ============ Theme Switcher ============
 // Clicking (or pressing T) cycles through the themes in order.
 const THEMES = [
-    { id: 'dark',   cls: '',             icon: '🌙', label: 'Dark' },
-    { id: 'light',  cls: 'light-mode',   icon: '☀️', label: 'Light' },
-    { id: 'orange', cls: 'theme-orange', icon: '🟠', label: 'Orange' },
-    { id: 'dnd',    cls: 'theme-dnd',    icon: '⚔️', label: 'D&D' },
+    { id: 'dark',         cls: '',                   icon: '🌙', label: 'Dark' },
+    { id: 'light',        cls: 'light-mode',         icon: '☀️', label: 'Light' },
+    { id: 'orange',       cls: 'theme-orange',       icon: '🟠', label: 'Orange' },
+    { id: 'dnd',          cls: 'theme-dnd',          icon: '⚔️', label: 'D&D' },
+    { id: 'black-yellow', cls: 'theme-black-yellow', icon: '🟡', label: 'Black/Yellow' },
+    { id: 'black-blue',   cls: 'theme-black-blue',   icon: '🔵', label: 'Black/Blue' },
 ];
 
 function applyTheme(id) {
     const theme = THEMES.find(t => t.id === id) || THEMES[0];
-    document.body.classList.remove('light-mode', 'theme-orange', 'theme-dnd');
+    document.body.classList.remove(...THEMES.map(t => t.cls).filter(Boolean));
     if (theme.cls) document.body.classList.add(theme.cls);
     const themeBtn = document.getElementById('themeBtn');
     if (themeBtn) {
@@ -2337,6 +2383,10 @@ function updateLibraryState() {
         toggle.textContent = '▼';
         panel.classList.remove('collapsed');
     }
+
+    // Expanding/collapsing the library changes the storyline viewport height —
+    // re-evaluate its scrollbars so hidden content stays reachable.
+    updateScrollbarVisibility();
 }
 
 function loadLibrary() {
@@ -2348,6 +2398,29 @@ function loadLibrary() {
             updateLibraryState();
         });
 }
+
+// Collapse / expand the whole side-panels (notes) column to give the main
+// storyline viewport more width. State is remembered.
+function toggleSidePanels() {
+    const col = document.getElementById('sidePanels');
+    if (!col) return;
+    const collapsed = col.classList.toggle('collapsed');
+    localStorage.setItem('sidePanelsCollapsed', collapsed);
+    const toggle = col.querySelector('.side-panels-toggle');
+    if (toggle) toggle.textContent = collapsed ? '❮' : '❯';
+    // The main viewport width changes (after the 0.15s width transition) — then
+    // re-evaluate whether it needs a horizontal scrollbar.
+    setTimeout(updateScrollbarVisibility, 180);
+}
+
+(function initSidePanelsColumn() {
+    const col = document.getElementById('sidePanels');
+    if (!col) return;
+    const collapsed = localStorage.getItem('sidePanelsCollapsed') === 'true';
+    if (collapsed) col.classList.add('collapsed');
+    const toggle = col.querySelector('.side-panels-toggle');
+    if (toggle) toggle.textContent = collapsed ? '❮' : '❯';
+})();
 
 // Resize the library cards (scales size, text and images) via the header slider.
 function setLibraryCardZoom(value) {
@@ -2377,6 +2450,7 @@ function setLibraryCardZoom(value) {
         const dy = startY - e.clientY; // drag up => taller (library sits at bottom)
         const h = Math.max(120, Math.min(window.innerHeight * 0.85, startH + dy));
         document.documentElement.style.setProperty('--library-content-height', h + 'px');
+        updateScrollbarVisibility(); // storyline viewport shrinks/grows as we drag
     };
     const onUp = () => {
         document.removeEventListener('mousemove', onMove);
@@ -3277,12 +3351,22 @@ async function confirmImport() {
 let sessionNotes = [];
 
 function handleSessionNoteKeydown(event) {
-    // Submit on Enter (without Alt)
-    if (event.key === 'Enter' && !event.altKey) {
+    if (event.key !== 'Enter') return;
+
+    if (event.altKey) {
+        // Alt+Enter inserts a line break. Browsers don't do this by default, so
+        // insert it at the caret ourselves.
+        event.preventDefault();
+        const ta = event.target;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        ta.value = ta.value.slice(0, start) + '\n' + ta.value.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + 1;
+    } else {
+        // Plain Enter submits.
         event.preventDefault();
         addSessionNote();
     }
-    // Alt+Enter allows normal line break (default behavior)
 }
 
 function loadSessionNotes() {

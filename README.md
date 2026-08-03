@@ -20,7 +20,7 @@ A visual interactive storytelling tool for Game Masters running tabletop RPGs, o
 - **Import/Export** - Import/export storylines, player types, and library items as JSON
 - **Zoom Controls** - Zoom in/out with auto-fit to show all injects
 - **Self-Contained Storage** - All data including images stored in JSON files for easy backup
-- **Dark/Light Themes** - Both GM and Player interfaces support theme switching
+- **Themes** - Multiple themes (Dark, Light, Orange, D&D, Black/Yellow, Black/Blue); cycle with the theme button or the T key
 - **GM Authentication** - Optional password protection for the GM interface
 - **Responsive Design** - Works on desktop and mobile devices
 - **AI Generation** - Included ChatGPT prompt for generating complete storylines
@@ -233,6 +233,9 @@ See `prompt.txt` for a ChatGPT prompt that generates complete storylines in this
 | A | Add new inject |
 | T | Toggle theme |
 | B | Cycle side-quest borders (solid / dashed / none) |
+| N | Collapse/expand the notes column |
+| H | Collapse/expand the top control bar |
+| L | Collapse/expand the inject library |
 | + / = | Zoom in |
 | - | Zoom out |
 | 0 | Reset zoom to 100% |
