@@ -40,8 +40,13 @@
         }
         
         .login-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        .login-icon img {
+            height: 200px;
+            width: auto;
+            max-width: 100%;
+            filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.45));
         }
         
         .login-title {
@@ -171,7 +176,7 @@
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <div class="login-icon">🎲</div>
+                <div class="login-icon"><img src="{{ url_for('static', filename='logo.png') }}" alt="StoryTeller logo"></div>
                 <h1 class="login-title">Game Master Login</h1>
                 <p class="login-subtitle">Enter your password to access the GM controls</p>
             </div>

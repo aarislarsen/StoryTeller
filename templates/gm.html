@@ -16,7 +16,7 @@
     
     <!-- Control Bar -->
     <div class="controls-bar">
-        <h1>🎲 StoryTeller — Game Master
+        <h1><img src="{{ url_for('static', filename='logo.png') }}" alt="StoryTeller logo" class="app-logo" onclick="openAboutModal()" title="About StoryTeller"> StoryTeller — Game Master
             <span class="connection-status" id="connectionStatus">
                 <span class="dot"></span>
                 <span>Connecting...</span>
@@ -488,7 +488,29 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- About Modal -->
+    <div class="modal-overlay" id="aboutModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">About StoryTeller</h3>
+                <button class="modal-close" onclick="closeAboutModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="StoryTeller logo"
+                     style="max-width: 220px; width: auto; height: auto; margin: 4px auto 20px;">
+                <p style="margin: 0 0 12px;">Created by <strong>Andreas Aaris-Larsen</strong>. All rights reserved.</p>
+                <p style="margin: 0; color: var(--muted, #8b949e); font-size: 14px;">
+                    Free for personal use. For commercial use or use in commercial products and
+                    services, please seek prior approval by the author.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeAboutModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Player Types Modal -->
     <div class="modal-overlay" id="playerTypesModal">
         <div class="modal" style="max-width: 450px;">

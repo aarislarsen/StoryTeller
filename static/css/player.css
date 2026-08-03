@@ -337,6 +337,12 @@ html, body {
     opacity: 0.3;
 }
 
+.waiting-icon img {
+    height: 88px;
+    width: auto;
+    max-width: 100%;
+}
+
 .waiting-title {
     font-size: 28px;
     margin-bottom: 12px;

@@ -2157,6 +2157,14 @@ function closeHelpModal() {
     flushPendingRefresh();
 }
 
+function openAboutModal() {
+    document.getElementById('aboutModal').classList.add('active');
+}
+
+function closeAboutModal() {
+    document.getElementById('aboutModal').classList.remove('active');
+}
+
 // ============ Player Types ============
 let playerTypes = [];
 
@@ -3785,6 +3793,7 @@ function initModalEscToClose() {
         playerTypesModal: closePlayerTypesModal,
         playerLinksModal: closePlayerLinksModal,
         helpModal: closeHelpModal,
+        aboutModal: closeAboutModal,
         libraryInjectModal: closeLibraryInjectModal,
         libraryBranchDetailsModal: closeLibraryBranchDetailsModal,
         importModal: closeImportModal,
