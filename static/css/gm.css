@@ -1817,7 +1817,9 @@ textarea.form-input {
     flex-direction: column;
     gap: 0;
     transform-origin: top left;
-    transition: transform 0.15s ease-out;
+    /* No transform transition: the zoom scale and the scroll compensation that
+       keeps the viewport centered must apply together in one frame, otherwise
+       the animating scale lags the instant scroll and the view jerks. */
 }
 
 /* Rows */

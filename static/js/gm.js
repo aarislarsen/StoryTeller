@@ -1133,23 +1133,32 @@ function scrollBlocks(dir) {
 
 // ============ Zoom Functions ============
 function zoomIn() {
-    setZoom(Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP));
+    setZoom(Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP), true);
 }
 
 function zoomOut() {
-    setZoom(Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP));
+    setZoom(Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP), true);
 }
 
 function zoomReset() {
-    setZoom(1.0);
+    setZoom(1.0, true);
 }
 
 function zoomToFit() {
     const wrapper = document.querySelector('.storyline-layout-wrapper');
     const container = document.getElementById('blocksContainer');
-    
+
     if (!wrapper || !container) return;
-    
+
+    // Capture the CURRENT view before we rescale to measure — measuring at
+    // scale(1) can clamp the scroll, so grab these first to keep the point the
+    // GM is looking at centered after the fit.
+    const oldZoom = zoomLevel;
+    const preLeft = wrapper.scrollLeft;
+    const preTop = wrapper.scrollTop;
+    const preClientW = wrapper.clientWidth;
+    const preClientH = wrapper.clientHeight;
+
     // Temporarily reset zoom to measure actual content size
     container.style.transform = 'scale(1)';
 
@@ -1175,26 +1184,52 @@ function zoomToFit() {
     newZoom = Math.floor(newZoom * 100) / 100;
 
     setZoom(newZoom);
+
+    // Keep the pre-fit viewport center fixed (center on the current view, not
+    // the middle of the whole storyline). Vertically the content now fills the
+    // height, so this mainly recenters horizontally.
+    if (oldZoom > 0) {
+        const ratio = newZoom / oldZoom;
+        wrapper.scrollLeft = (preLeft + preClientW / 2) * ratio - wrapper.clientWidth / 2;
+        wrapper.scrollTop = (preTop + preClientH / 2) * ratio - wrapper.clientHeight / 2;
+    }
 }
 
-function setZoom(level) {
+function setZoom(level, focusCenter = false) {
+    // Capture the pre-zoom viewport so we can keep a chosen point fixed.
+    const wrapper = document.querySelector('.storyline-layout-wrapper');
+    const oldZoom = zoomLevel;
+    const preLeft = wrapper ? wrapper.scrollLeft : 0;
+    const preTop = wrapper ? wrapper.scrollTop : 0;
+    const preClientW = wrapper ? wrapper.clientWidth : 0;
+    const preClientH = wrapper ? wrapper.clientHeight : 0;
+
     // Round to 2 decimals so zoom-to-fit's precise value survives (manual zoom
     // still steps in clean 0.1 increments).
     zoomLevel = Math.round(level * 100) / 100;
     localStorage.setItem('gmZoomLevel', zoomLevel);
-    
+
     const container = document.getElementById('blocksContainer');
     if (container) {
         container.style.transform = `scale(${zoomLevel})`;
     }
-    
+
     const zoomDisplay = document.getElementById('zoomLevel');
     if (zoomDisplay) {
         zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
     }
-    
+
     // Update scrollbar visibility after zoom change
     updateScrollbarVisibility();
+
+    // Keep the center of the viewport fixed while zooming (transform-origin is
+    // top-left, so scrolling has to compensate). scrollLeft directly shifts the
+    // scaled content, so scaling the center point by the zoom ratio works.
+    if (focusCenter && wrapper && oldZoom > 0) {
+        const ratio = zoomLevel / oldZoom;
+        wrapper.scrollLeft = (preLeft + preClientW / 2) * ratio - wrapper.clientWidth / 2;
+        wrapper.scrollTop = (preTop + preClientH / 2) * ratio - wrapper.clientHeight / 2;
+    }
 }
 
 function updateScrollbarVisibility() {
