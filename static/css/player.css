@@ -292,7 +292,10 @@ html, body {
     
     .card-content {
         flex: 1;
-        justify-content: center;
+        /* "safe" centers short text but falls back to top-alignment when the
+           text overflows, so the top stays reachable by scrolling (plain
+           "center" pushes the overflowing top above the scroll origin). */
+        justify-content: safe center;
         padding: clamp(30px, 4vw, 60px);
         overflow-y: auto;
     }
