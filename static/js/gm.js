@@ -2354,17 +2354,31 @@ function copyPlayerLink(inputId) {
     
     input.select();
     input.setSelectionRange(0, 99999); // For mobile
-    
-    navigator.clipboard.writeText(input.value).then(() => {
-        // Brief visual feedback
+
+    // Brief visual feedback on the copy button
+    const showOk = () => {
         const btn = input.nextElementSibling;
+        if (!btn) return;
         const originalText = btn.textContent;
         btn.textContent = '✓';
         setTimeout(() => btn.textContent = originalText, 1000);
-    }).catch(() => {
-        // Fallback for older browsers
+    };
+
+    // navigator.clipboard only exists in a secure context (HTTPS or localhost).
+    // Over plain HTTP on a LAN IP it's undefined, so accessing .writeText throws
+    // synchronously and never reaches a .catch(). Guard it and fall back to the
+    // legacy execCommand path (the selection above is already set).
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(input.value)
+            .then(showOk)
+            .catch(() => {
+                document.execCommand('copy');
+                showOk();
+            });
+    } else {
         document.execCommand('copy');
-    });
+        showOk();
+    }
 }
 
 // ============ Inject Library ============
