@@ -85,6 +85,7 @@ let editingStorylineId = null;
 let currentDisplaySource = 'main';  // What's being shown to players: 'main' or branch_id
 let currentDisplayBranchId = null;
 let currentDisplayBranchInjectIdx = null;
+let currentDisplayMainIdx = 0;      // Main inject index currently shown (live, not cached)
 
 // Zoom state
 let zoomLevel = parseFloat(localStorage.getItem('gmZoomLevel')) || 1.0;
@@ -134,6 +135,7 @@ socket.on('state_update', (data) => {
     currentDisplaySource = data.current_source || 'main';
     currentDisplayBranchId = data.current_branch_id || null;
     currentDisplayBranchInjectIdx = data.current_branch_inject_idx;
+    currentDisplayMainIdx = data.current_block || 0;
 
     // Keep the cached storyline position in sync so highlighting and other
     // features stay correct without re-fetching the whole storyline.
@@ -3435,7 +3437,7 @@ function addSessionNote() {
     let injectName = '';
     if (activeStoryline && storylinesData[activeStoryline]) {
         const data = storylinesData[activeStoryline];
-        const currentIdx = data.current_block || 0;
+        const currentIdx = currentDisplayMainIdx;
         const mainInjectNum = currentIdx + 1;
         
         // Check if we're showing a branch inject (possibly nested)
